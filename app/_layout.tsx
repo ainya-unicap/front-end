@@ -20,6 +20,8 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ headerShown: false}} />
         <Stack.Screen name="cadastro" options={{ title: 'Criar conta' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="relatorios/[id]/index" options={{ title: 'Relatório' }} />
+        <Stack.Screen name="relatorios/[id]/desenvolvimento" options={{ title: 'Sessão 3 - Desenvolvimento' }} />
       </Stack>
       <StatusBar style="dark" />
     </ThemeProvider>
