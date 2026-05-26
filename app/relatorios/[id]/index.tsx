@@ -28,7 +28,11 @@ export default function UserScreen() {
                         <Text>✏️</Text>
                     </View>
 
-                    <View className="flex-row justify-between w-full gap-2 items-center h-fit">
+                    <TouchableOpacity className="flex-row justify-between w-full gap-2 items-center h-fit"
+                        onPress={() => {
+                            router.push(`/relatorios/${id}/objetivo`);
+                        }}
+                    >
                         <View className="bg-gray-400 text-white items-center justify-center"
                             style={{ width: 32, height: 32, borderRadius: 16 }}
                         >
@@ -39,7 +43,7 @@ export default function UserScreen() {
                             <Text className="text-sm">Objetivos do acompanhamento</Text>
                         </View>
                         <Text>✏️</Text>
-                    </View>
+                    </TouchableOpacity>
 
                     <TouchableOpacity className="flex-row justify-between w-full gap-2 items-center h-fit"
                         onPress={() => {

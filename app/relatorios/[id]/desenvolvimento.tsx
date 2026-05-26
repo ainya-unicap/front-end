@@ -8,7 +8,7 @@ export default function UserScreen() {
 
     return (
         <>
-            
+
             <ScrollView>
                 <View className="p-6 gap-4">
                     <View className="border-l-2 pl-4 py-3 border-green-900 bg-gray-200">
@@ -16,20 +16,20 @@ export default function UserScreen() {
                             📋 Gerado automaticamente dos seus registros. Edite o texto de cada semana se desejar.
                         </Text>
                     </View>
-                    <View className="gap-2">
-                        <Text className="text-lg font-semibold">Semana 1</Text>
+                    <View className="gap-2 border border-gray-200 rounded-xl p-4">
+                        <Text className="text-lg font-bold text-gray-400 mb-2 tracking-wider">Semana 1</Text>
                         <View className="flex-row gap-2">
-                            <View className="bg-gray-200 rounded-xl px-4 py-2">
+                            <View className="border border-gray-200 rounded-xl px-4 py-2">
                                 <Text className="text-lg font-semibold">45cm</Text>
                                 <Text className="text-sm">Altura</Text>
                             </View>
 
-                            <View className="bg-gray-200 rounded-xl px-4 py-2">
+                            <View className="border border-gray-200 rounded-xl px-4 py-2">
                                 <Text className="text-lg font-semibold">72%</Text>
                                 <Text className="text-sm">Cobertura</Text>
                             </View>
 
-                            <View className="bg-gray-200 rounded-xl px-4 py-2">
+                            <View className="border border-gray-200 rounded-xl px-4 py-2">
                                 <Text className="text-lg font-semibold">Veg.</Text>
                                 <Text className="text-sm">Estação</Text>
                             </View>
@@ -40,30 +40,28 @@ export default function UserScreen() {
                             style={{ width: '100%', height: 200, borderRadius: 16 }}
                         />
                         {/*Text area */}
-                        <View className="bg-gray-200 rounded-xl p-4">
-                            <TextInput
-                                multiline
-                                numberOfLines={4}
-                                className="text-md"
-                                value="Crescimento uniforme. Solo com boa umidade. Sem sinais de pragas."
-                            />
-                        </View>
+                        <TextInput
+                            multiline
+                            numberOfLines={4}
+                            className="bg-white rounded-xl p-4 text-gray-700 text-base border border-gray-200"
+                            value="Crescimento uniforme. Solo com boa umidade. Sem sinais de pragas."
+                        />
                     </View>
 
-                    <View className="gap-2">
-                        <Text className="text-lg font-semibold">Semana 2</Text>
+                    <View className="gap-2 border border-gray-200 rounded-xl p-4">
+                        <Text className="text-lg font-bold text-gray-400 mb-2 tracking-wider">Semana 2</Text>
                         <View className="flex-row gap-2">
-                            <View className="bg-gray-200 rounded-xl px-4 py-2">
+                            <View className="border border-gray-200 rounded-xl px-4 py-2">
                                 <Text className="text-lg font-semibold">45cm</Text>
                                 <Text className="text-sm">Altura</Text>
                             </View>
 
-                            <View className="bg-gray-200 rounded-xl px-4 py-2">
+                            <View className="border border-gray-200 rounded-xl px-4 py-2">
                                 <Text className="text-lg font-semibold">72%</Text>
                                 <Text className="text-sm">Cobertura</Text>
                             </View>
 
-                            <View className="bg-gray-200 rounded-xl px-4 py-2">
+                            <View className="border border-gray-200 rounded-xl px-4 py-2">
                                 <Text className="text-lg font-semibold">Veg.</Text>
                                 <Text className="text-sm">Estação</Text>
                             </View>
@@ -74,20 +72,20 @@ export default function UserScreen() {
                             style={{ width: '100%', height: 200, borderRadius: 16 }}
                         />
                         {/*Text area */}
-                        <View className="bg-gray-200 rounded-xl p-4">
-                            <TextInput
-                                multiline
-                                numberOfLines={4}
-                                className="text-md"
-                                value="Crescimento uniforme. Solo com boa umidade. Sem sinais de pragas."
-                            />
-                        </View>
+                        <TextInput
+                            multiline
+                            numberOfLines={4}
+                            className="bg-white rounded-xl p-4 text-gray-700 text-base border border-gray-200"
+                            value="Crescimento uniforme. Solo com boa umidade. Sem sinais de pragas."
+                        />
+
+                        
                     </View>
 
-                    
+
                 </View>
             </ScrollView>
-            <StepControl nextStep={() => {}} />
+            <StepControl nextStep={() => { }} />
         </>
     );
 }

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { AntDesign } from '@expo/vector-icons';
+import StepControl from '@/components/forms/stepControll';
 
 export default function RelatorioObjetivoScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   
   // Estado preenchido com o texto padrão do protótipo
@@ -67,22 +69,11 @@ export default function RelatorioObjetivoScreen() {
         </View>
       </ScrollView>
 
-      {/* Barra de Navegação Inferior */}
-      <View className="flex-row justify-between px-5 pb-8 pt-4 bg-[#f8fafc] border-t border-gray-100">
-        <TouchableOpacity 
-          onPress={() => router.back()}
-          className="flex-1 bg-white py-3.5 rounded-xl mr-2 items-center border border-gray-300"
-        >
-          <Text className="text-gray-700 font-bold text-sm">‹ Anterior</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          onPress={handleProximo}
-          className="flex-1 bg-[#166534] py-3.5 rounded-xl ml-2 items-center justify-center"
-        >
-          <Text className="text-white font-bold text-sm">Próximo ›</Text>
-        </TouchableOpacity>
-      </View>
+      <StepControl
+        nextStep={()=>{
+          router.push(`/relatorios/${id}/desenvolvimento`);
+        }}
+      />
     </View>
   );
 }

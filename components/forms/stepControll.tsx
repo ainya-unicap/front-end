@@ -11,13 +11,12 @@ export default function StepControl({ nextStep }: StepControlProps) {
 
     return (
         <View className="flex-row items-center absolute bottom-4 right-4 z-10 gap-2">
-            <TouchableOpacity onPress={() => router.back()} className="bg-white/20 p-4 rounded-full overflow-hidden">
-                <BlurView tint="dark" intensity={40} style={StyleSheet.absoluteFill}/>
-                <ChevronLeftIcon color="white"/>
+            <TouchableOpacity onPress={() => router.back()} className="bg-gray-100 border border-gray-300 shadow-md p-4 rounded-full overflow-hidden">
+                <ChevronLeftIcon color="gray"/>
             </TouchableOpacity>
             {nextStep && (
-                <TouchableOpacity onPress={nextStep} className="bg-white/20 p-4 rounded-full overflow-hidden">
-                    <BlurView tint="dark" intensity={40} style={StyleSheet.absoluteFill}/>
+                <TouchableOpacity onPress={nextStep} className="bg-green-900 border border-green-900 shadow-md py-4 px-6 rounded-full overflow-hidden flex-row items-center gap-1 justify-center">
+                    <Text className="text-white font-bold">Próximo</Text>
                     <ChevronRightIcon color="white"/>
                 </TouchableOpacity>
             )}
