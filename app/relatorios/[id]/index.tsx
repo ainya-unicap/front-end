@@ -1,8 +1,9 @@
 import { useLocalSearchParams } from "expo-router";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
-
+import { View, Text, ScrollView, TouchableOpacity, Touchable } from "react-native";
+import { useRouter } from 'expo-router';
 export default function UserScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
 
   return (
     <>
@@ -40,7 +41,11 @@ export default function UserScreen() {
                         <Text>✏️</Text>
                     </View>
 
-                    <View className="flex-row justify-between w-full gap-2 items-center h-fit">
+                    <TouchableOpacity className="flex-row justify-between w-full gap-2 items-center h-fit"
+                        onPress={() => {
+                            router.push(`/relatorios/${id}/desenvolvimento`);
+                        }}
+                    >
                         <View className="bg-gray-400 text-white items-center justify-center"
                             style={{ width: 32, height: 32, borderRadius: 16 }}
                         >
@@ -51,7 +56,7 @@ export default function UserScreen() {
                             <Text className="text-sm">12 registros organizados</Text>
                         </View>
                         <Text>✏️</Text>
-                    </View>
+                    </TouchableOpacity>
 
                     <View className="flex-row justify-between w-full gap-2 items-center h-fit">
                         <View className="bg-gray-400 text-white items-center justify-center"

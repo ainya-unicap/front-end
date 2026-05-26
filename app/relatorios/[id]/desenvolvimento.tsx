@@ -1,3 +1,4 @@
+import StepControl from "@/components/forms/stepControll";
 import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
@@ -7,6 +8,7 @@ export default function UserScreen() {
 
     return (
         <>
+            
             <ScrollView>
                 <View className="p-6 gap-4">
                     <View className="border-l-2 pl-4 py-3 border-green-900 bg-gray-200">
@@ -82,16 +84,10 @@ export default function UserScreen() {
                         </View>
                     </View>
 
-                    <View className="flex-row gap-2">
-                        <TouchableOpacity className="border p-6 items-center rounded-2xl flex-1">
-                            <Text className="font-semibold">Anterior</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity className="bg-green-900 p-6 items-center rounded-2xl flex-1">
-                            <Text className="text-white font-semibold">Próximo</Text>
-                        </TouchableOpacity>
-                    </View>
+                    
                 </View>
             </ScrollView>
+            <StepControl nextStep={() => {}} />
         </>
     );
 }
