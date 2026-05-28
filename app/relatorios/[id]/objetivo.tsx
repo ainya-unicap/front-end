@@ -3,6 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'reac
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { AntDesign } from '@expo/vector-icons';
 import StepControl from '@/components/forms/stepControll';
+import Warning from '@/components/forms/warning';
+import Input10 from '@/components/forms/input10';
+import HeaderStack from '@/components/navigation/headerStack';
 
 export default function RelatorioObjetivoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,48 +28,27 @@ export default function RelatorioObjetivoScreen() {
       
       <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
         {/* Cabeçalho */}
-        <View className="flex-row items-center mb-8 mt-14">
-          <TouchableOpacity 
-            onPress={() => router.back()} 
-            className="p-3 bg-white rounded-full border border-gray-200 shadow-sm"
-          >
-            <AntDesign name="left" size={16} color="#1f2937" />
-          </TouchableOpacity>
-          <Text className="text-xl font-bold text-[#0f172a] ml-4">Seção 2 — Objetivo</Text>
-        </View>
+        <HeaderStack
+          title="Seção 2 — Objetivo"
+        />
 
-        <View className="flex-row items-start mb-6 border-l-[3px] border-[#166534] pl-3 ml-1">
-          <Text className="text-lg mr-2">✨</Text>
-          <Text className="text-gray-600 flex-1 text-[13px] leading-5">
-            Texto base gerado automaticamente. Edite para personalizar os objetivos específicos.
-          </Text>
-        </View>
+        <Warning 
+          text="✨ Texto base gerado automaticamente. Edite para personalizar os objetivos específicos."
+        />
 
         {/* Campo Objetivo Geral */}
-        <View className="mb-6">
-          <Text className="text-[11px] font-bold text-gray-400 mb-2 tracking-wider">OBJETIVO GERAL</Text>
-          <TextInput
-            className="bg-white rounded-xl p-4 text-gray-700 text-base border border-gray-200"
-            style={{ minHeight: 180, textAlignVertical: 'top' }}
-            multiline
-            value={objective}
-            onChangeText={setObjective}
-          />
-        </View>
+        <Input10
+          label="OBJETIVO GERAL"
+          value={objective}
+          onChangeText={setObjective}
+        />
 
         {/* Campo Objetivos Específicos */}
-        <View className="mb-10">
-          <Text className="text-[11px] font-bold text-gray-400 mb-2 tracking-wider">OBJETIVOS ESPECÍFICOS (OPCIONAL)</Text>
-          <TextInput
-            className="bg-white rounded-xl p-4 text-gray-700 text-base border border-gray-200"
-            style={{ minHeight: 120, textAlignVertical: 'top' }}
-            multiline
-            placeholder="Ex: Identificar as fases de crescimento..."
-            placeholderTextColor="#9ca3af"
-            value={specificObjectives}
-            onChangeText={setSpecificObjectives}
-          />
-        </View>
+        <Input10
+          label="OBJETIVOS ESPECÍFICOS (OPCIONAL)"
+          value={specificObjectives}
+          onChangeText={setSpecificObjectives}
+        />
       </ScrollView>
 
       <StepControl

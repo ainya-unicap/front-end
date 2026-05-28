@@ -1,4 +1,6 @@
 import StepControl from "@/components/forms/stepControll";
+import Warning from "@/components/forms/warning";
+import HeaderStack from "@/components/navigation/headerStack";
 import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
@@ -8,14 +10,13 @@ export default function UserScreen() {
 
     return (
         <>
-
             <ScrollView>
-                <View className="p-6 gap-4">
-                    <View className="border-l-2 pl-4 py-3 border-green-900 bg-gray-200">
-                        <Text>
-                            📋 Gerado automaticamente dos seus registros. Edite o texto de cada semana se desejar.
-                        </Text>
-                    </View>
+                
+                <View className="p-6 pt-0 gap-4 bg-[#f8fafc]">
+                    <HeaderStack title="Seção 3 — Desenvolvimento" />
+                    <Warning
+                        text="📋 Gerado automaticamente dos seus registros. Edite o texto de cada semana se desejar."
+                    />
                     <View className="gap-2 border border-gray-200 rounded-xl p-4">
                         <Text className="text-lg font-bold text-gray-400 mb-2 tracking-wider">Semana 1</Text>
                         <View className="flex-row gap-2">
@@ -79,7 +80,7 @@ export default function UserScreen() {
                             value="Crescimento uniforme. Solo com boa umidade. Sem sinais de pragas."
                         />
 
-                        
+
                     </View>
 
 

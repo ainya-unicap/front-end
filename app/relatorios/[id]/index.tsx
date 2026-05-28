@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from "expo-router";
 import { View, Text, ScrollView, TouchableOpacity, Touchable } from "react-native";
 import { useRouter } from 'expo-router';
+import HeaderStack from "@/components/navigation/headerStack";
 export default function UserScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -8,7 +9,9 @@ export default function UserScreen() {
   return (
     <>
         <ScrollView>
-            <View className="p-6 bg-green-900 items-center gap-2">
+            
+            <View className="px-6 pb-6 bg-green-900 items-center gap-2 justify-center">
+                <HeaderStack title="" />
                 <Text>📄</Text>
                 <Text className="text-2xl font-bold text-white">Relatório de Análise do Canteiro</Text>
                 <Text className="text-white">Canteiro { id }</Text>
