@@ -129,6 +129,7 @@ export default function HomeScreen() {
             icon="🌱"
             title="Canteiros"
             subtitle="Minhas plantas"
+            onPress={() => router.push("/nova-lista")}
           />
 
           <QuickActionCard

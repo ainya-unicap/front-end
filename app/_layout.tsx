@@ -20,6 +20,7 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ headerShown: false}} />
         <Stack.Screen name="cadastro" options={{ title: 'Criar conta' }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="nova-lista" options={{ headerShown: false }} />
         <Stack.Screen name="relatorios/[id]/objetivo" options={{ headerShown: false}} />
         <Stack.Screen name="relatorios/[id]/index" options={{ headerShown: false}} />
         <Stack.Screen name="relatorios/[id]/desenvolvimento" options={{ headerShown: false}} />
