@@ -22,6 +22,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="nova-lista" options={{ headerShown: false }} />
         <Stack.Screen name="canteiros/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="relatorios/novo" options={{ headerShown: false}} />
         <Stack.Screen name="relatorios/[id]/objetivo" options={{ headerShown: false}} />
         <Stack.Screen name="relatorios/[id]/index" options={{ headerShown: false}} />
         <Stack.Screen name="relatorios/[id]/desenvolvimento" options={{ headerShown: false}} />

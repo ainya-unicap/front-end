@@ -90,7 +90,7 @@ export default function ListaRelatoriosScreen() {
 
       <TouchableOpacity 
         className="mt-2 bg-white border border-[#166534] py-[14px] rounded-full flex-row justify-center items-center shadow-sm"
-        onPress={() => router.push('/relatorios/novo' as any)}
+        onPress={() => router.push('/relatorios/novo')}
       >
         <AntDesign name="plus" size={18} color="#5b21b6" />
         <Text className="text-[#166534] font-bold text-base ml-2">Novo relatório</Text>
