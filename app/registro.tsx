@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 
 import {
   createChecklist,
@@ -69,6 +69,10 @@ const mockChecklist = [
 ];
 
 export default function RegistroScreen() {
+  // list_id vem da tela de lista de formulários do canteiro; cai no mock se
+  // a tela for aberta direto (ex.: ação rápida da Home).
+  const { list_id } = useLocalSearchParams<{ list_id?: string }>();
+
   const [date, setDate] = useState("07/04/2026");
   const [week, setWeek] = useState("12");
   const [startedAt, setStartedAt] = useState("08:00");
@@ -108,7 +112,7 @@ export default function RegistroScreen() {
       setSaving(true);
 
       const formularioResponse = await createFormulario({
-        list_id: MOCK_LIST_ID,
+        list_id: list_id || MOCK_LIST_ID,
         user_id: MOCK_USER_ID,
         type: "SEMANAL",
         observations,
