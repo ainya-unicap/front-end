@@ -3,10 +3,9 @@ import { type AlunoResumo } from "@/services/api";
 
 type HomeHeaderProps = {
   resumo: AlunoResumo;
-  usingMock?: boolean;
 };
 
-export function HomeHeader({ resumo, usingMock = false }: HomeHeaderProps) {
+export function HomeHeader({ resumo }: HomeHeaderProps) {
   return (
     <View className="rounded-b-3xl bg-emerald-900 px-6 pb-5 pt-14">
       <View className="flex-row items-center justify-between">
@@ -31,12 +30,6 @@ export function HomeHeader({ resumo, usingMock = false }: HomeHeaderProps) {
           </Text>
         </View>
       </View>
-
-      {usingMock && (
-        <Text className="mt-3 text-xs text-emerald-100">
-          Visualização com dados de exemplo
-        </Text>
-      )}
     </View>
   );
 }

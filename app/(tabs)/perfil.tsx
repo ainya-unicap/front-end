@@ -1,44 +1,53 @@
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
+import useSWR from "swr";
 
 import { ProfileHeader } from "@/components/perfil/ProfileHeader";
 import { ProfileSection } from "@/components/perfil/ProfileSection";
 import { ProfileRow } from "@/components/perfil/ProfileRow";
-import useSWR from "swr";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { getProfile } from "@/database/user";
-
-// ---------------------------------------------------------------------------
-// DADOS MOCKADOS — substituir pelos dados reais do BD.
-//
-// Trocar por um getProfile(userId) em services/api.ts e carregar via useEffect,
-// guardando o resultado em estado no lugar de MOCK_PERFIL. Os campos abaixo já
-// espelham o que cada linha exibe na tela.
-// ---------------------------------------------------------------------------
-const MOCK_PERFIL = {
-  name: "Luana Cabral",
-  email: "luana@ufrpe.edu.br",
-  institution: "UFRPE — Zootecnia",
-  period: "2026.1",
-  turma: "PFP I — Turma A",
-  notifications: "Ativadas",
-  offlineSync: "Automática",
-};
+import { logout } from "@/database/auth";
 
 export default function PerfilScreen() {
-  const { data: perfil, error: errorPerfil, isLoading: isLoadingPerfil } = useSWR("perfil", () => getProfile());
+  const { data: perfilResp, isLoading } = useSWR("perfil", () => getProfile());
+  // A API pode devolver o objeto direto ou embrulhado em { data: {...} }
+  const perfil = (perfilResp as any)?.data ?? perfilResp;
 
-
-  if (isLoadingPerfil) {
-    return (
-      <View className="flex-1 items-center justify-center">
-        <Text className="text-lg font-semibold">Carregando perfil...</Text>
-      </View>
-    );
+  async function handleLogout() {
+    // Encerra a sessão no back-end e limpa os tokens locais antes de redirecionar.
+    await logout();
+    router.replace("/login");
   }
 
-  function handleLogout() {
-    // TODO(BD): limpar sessão/token armazenado antes de redirecionar.
-    router.replace("/login");
+  if (isLoading) {
+    return (
+      <View className="flex-1 bg-slate-50">
+        {/* Skeleton do cabeçalho */}
+        <View className="items-center gap-3 rounded-b-3xl bg-emerald-900 px-6 pb-8 pt-16">
+          <Skeleton width={80} height={80} radius={40} />
+          <Skeleton width={160} height={20} />
+          <Skeleton width={200} height={14} />
+        </View>
+
+        {/* Skeleton das seções */}
+        <View className="gap-4 px-5 pt-6">
+          {[0, 1, 2].map((section) => (
+            <View key={section} className="gap-3 rounded-2xl bg-white p-4">
+              {[0, 1].map((row) => (
+                <View key={row} className="flex-row items-center gap-3">
+                  <Skeleton width={40} height={40} radius={12} />
+                  <View className="flex-1 gap-2">
+                    <Skeleton width="40%" height={12} />
+                    <Skeleton width="70%" height={16} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -77,35 +86,19 @@ export default function PerfilScreen() {
               icon="🏛️"
               iconBg="bg-amber-100"
               label="Instituição"
-              value={perfil?.institution?.name}
+              value={perfil?.institution?.name ?? "Sem instituição vinculada"}
             />
             <ProfileRow
               icon="📅"
               iconBg="bg-orange-100"
               label="Período letivo"
-              value={"Sem período vinculado"}
+              value={perfil?.academic_period?.name ?? "Sem período vinculado"}
             />
             <ProfileRow
               icon="👥"
               iconBg="bg-violet-100"
               label="Turma"
-              value={"Sem turma vinculada"}
-              isLast
-            />
-          </ProfileSection>
-
-          <ProfileSection title="Preferências">
-            <ProfileRow
-              icon="🔔"
-              iconBg="bg-amber-100"
-              label="Notificações"
-              value={MOCK_PERFIL.notifications}
-            />
-            <ProfileRow
-              icon="📊"
-              iconBg="bg-sky-100"
-              label="Sincronização offline"
-              value={MOCK_PERFIL.offlineSync}
+              value={perfil?.turma?.name ?? "Sem turma vinculada"}
               isLast
             />
           </ProfileSection>

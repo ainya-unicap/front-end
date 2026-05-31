@@ -1,24 +1,84 @@
-import { useLocalSearchParams } from "expo-router";
-import { View, Text, ScrollView, TouchableOpacity, Touchable } from "react-native";
-import { useRouter } from 'expo-router';
+import { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
+import useSWR from "swr";
+
 import HeaderStack from "@/components/navigation/headerStack";
+import { getRelatorioById, submitRelatorio, exportRelatorioPDF } from "@/database/relatoriosService";
+
 export default function UserScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
+  const { data: relatorio, isLoading } = useSWR(
+    id ? `relatorio-${id}` : null,
+    () => getRelatorioById(id)
+  );
+
+  const [submitting, setSubmitting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const rel = (relatorio as any)?.data ?? relatorio;
+  const canteiroNome =
+    rel?.list?.canteiro?.name ??
+    rel?.list?.plant?.name ??
+    `Canteiro ${id}`;
+
+  async function handlePreviewPDF() {
+    try {
+      setExporting(true);
+      await exportRelatorioPDF(id);
+      Alert.alert("PDF gerado", "A pré-visualização do PDF foi gerada com sucesso.");
+    } catch (error) {
+      console.error("Erro ao exportar PDF:", error);
+      Alert.alert("Erro", "Não foi possível gerar o PDF agora.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleSubmit() {
+    try {
+      setSubmitting(true);
+      await submitRelatorio(id);
+      Alert.alert("Relatório submetido", "Seu relatório foi enviado com sucesso.");
+      router.back();
+    } catch (error) {
+      console.error("Erro ao submeter relatório:", error);
+      Alert.alert("Erro", "Não foi possível submeter o relatório agora.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <>
         <ScrollView>
-            
+
             <View className="px-6 pb-6 bg-green-900 items-center gap-2 justify-center">
                 <HeaderStack title="" />
                 <Text>📄</Text>
                 <Text className="text-2xl font-bold text-white">Relatório de Análise do Canteiro</Text>
-                <Text className="text-white">Canteiro { id }</Text>
-            </View> 
+                <Text className="text-white">{canteiroNome}</Text>
+            </View>
+
+            {isLoading ? (
+                <ActivityIndicator color="#14532d" className="mt-10" />
+            ) : (
             <View className="p-6 gap-4">
                 <View className="bg-gray-50 rounded-2xl p-6 w-full gap-8">
-                    <View className="flex-row justify-between w-full gap-2 items-center h-fit">
+                    <TouchableOpacity className="flex-row justify-between w-full gap-2 items-center h-fit"
+                        onPress={() => {
+                            router.push(`/relatorios/${id}/objetivo`);
+                        }}
+                    >
                         <View className="bg-gray-400 text-white items-center justify-center"
                             style={{ width: 32, height: 32, borderRadius: 16 }}
                         >
@@ -29,7 +89,7 @@ export default function UserScreen() {
                             <Text className="text-sm">Contexto e justificativa</Text>
                         </View>
                         <Text>✏️</Text>
-                    </View>
+                    </TouchableOpacity>
 
                     <TouchableOpacity className="flex-row justify-between w-full gap-2 items-center h-fit"
                         onPress={() => {
@@ -60,7 +120,7 @@ export default function UserScreen() {
                         </View>
                         <View className="flex-1">
                             <Text className="text-xl font-semibold">Desenvolvimento</Text>
-                            <Text className="text-sm">12 registros organizados</Text>
+                            <Text className="text-sm">Registros organizados</Text>
                         </View>
                         <Text>✏️</Text>
                     </TouchableOpacity>
@@ -91,13 +151,32 @@ export default function UserScreen() {
                         <Text>✏️</Text>
                     </View>
                 </View>
-                <TouchableOpacity className="border p-6 items-center rounded-2xl">
-                    <Text className="font-semibold">Pré-visualizar PDF</Text>
+
+                <TouchableOpacity
+                    className="border p-6 items-center rounded-2xl"
+                    disabled={exporting}
+                    onPress={handlePreviewPDF}
+                >
+                    {exporting ? (
+                        <ActivityIndicator color="#14532d" />
+                    ) : (
+                        <Text className="font-semibold">Pré-visualizar PDF</Text>
+                    )}
                 </TouchableOpacity>
-                <TouchableOpacity className="bg-green-900 p-6 items-center rounded-2xl">
-                    <Text className="text-white font-semibold">Submeter Relatório</Text>
+
+                <TouchableOpacity
+                    className="bg-green-900 p-6 items-center rounded-2xl"
+                    disabled={submitting}
+                    onPress={handleSubmit}
+                >
+                    {submitting ? (
+                        <ActivityIndicator color="#ffffff" />
+                    ) : (
+                        <Text className="text-white font-semibold">Submeter Relatório</Text>
+                    )}
                 </TouchableOpacity>
             </View>
+            )}
         </ScrollView>
     </>
   );

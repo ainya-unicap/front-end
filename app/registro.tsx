@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,81 +9,101 @@ import {
   View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import useSWR from "swr";
 
 import {
-  createChecklist,
+  createChecklistItems,
   createFormulario,
   createMeasurements,
   finalizarFormulario,
-} from "@/services/api";
+} from "@/database/formularios";
+import { getListaById } from "@/database/listasFormularios";
+import { getPlantTemplates } from "@/database/plantTemplates";
 
 import { FieldBox } from "@/components/registro/FieldBox";
 import { SectionCard } from "@/components/registro/SectionCard";
 import { ChecklistItem } from "@/components/registro/ChecklistItem";
 import { PhotoUploadBox } from "@/components/registro/PhotoUploadBox";
+import { Skeleton } from "@/components/ui/Skeleton";
 
-const MOCK_USER_ID = "ID_DO_USUARIO";
-const MOCK_LIST_ID = "ID_DA_LISTA";
+type Measurement = {
+  template_id: string;
+  field_name: string;
+  unit: string;
+  value: string;
+};
 
-const mockMeasurements = [
-  {
-    template_id: "template-altura",
-    field_name: "Altura",
-    unit: "cm",
-    value: "45.5",
-  },
-  {
-    template_id: "template-cobertura",
-    field_name: "Cobertura",
-    unit: "%",
-    value: "72",
-  },
-];
+type ChecklistEntry = {
+  template_id: string;
+  label: string;
+  checked: boolean;
+};
 
-const mockChecklist = [
-  {
-    template_id: "template-irrigacao",
-    label: "Irrigação realizada",
-    checked: true,
-  },
-  {
-    template_id: "template-adubacao",
-    label: "Adubação nitrogenada",
-    checked: true,
-  },
-  {
-    template_id: "template-pragas",
-    label: "Controle de pragas",
-    checked: false,
-  },
-  {
-    template_id: "template-corte",
-    label: "Corte/roçada realizada",
-    checked: false,
-  },
-  {
-    template_id: "template-sanidade",
-    label: "Avaliação visual de sanidade",
-    checked: true,
-  },
-];
+function hoje() {
+  return new Date().toLocaleDateString("pt-BR");
+}
 
 export default function RegistroScreen() {
-  // list_id vem da tela de lista de formulários do canteiro; cai no mock se
-  // a tela for aberta direto (ex.: ação rápida da Home).
+  // list_id vem da tela de lista de formulários do canteiro.
   const { list_id } = useLocalSearchParams<{ list_id?: string }>();
 
-  const [date, setDate] = useState("07/04/2026");
-  const [week, setWeek] = useState("12");
-  const [startedAt, setStartedAt] = useState("08:00");
-  const [endedAt, setEndedAt] = useState("10:30");
+  // Lista -> canteiro -> planta, para buscar os campos (templates) corretos.
+  const { data: lista } = useSWR(list_id ? `lista-${list_id}` : null, () =>
+    getListaById(list_id as string)
+  );
+
+  const listaObj = (lista as any)?.data ?? lista;
+  const plantId =
+    listaObj?.canteiro?.plant_id ??
+    listaObj?.canteiro?.plant?.id ??
+    listaObj?.plant_id ??
+    listaObj?.plant?.id;
+
+  const { data: templates, isLoading: loadingTemplates } = useSWR(
+    plantId ? `plant-templates-${plantId}` : null,
+    () => getPlantTemplates(plantId)
+  );
+
+  const [date, setDate] = useState(hoje());
+  const [week, setWeek] = useState("");
+  const [startedAt, setStartedAt] = useState("");
+  const [endedAt, setEndedAt] = useState("");
   const [observations, setObservations] = useState("");
-  const [measurements, setMeasurements] = useState(mockMeasurements);
-  const [checklist, setChecklist] = useState(mockChecklist);
+  const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const [checklist, setChecklist] = useState<ChecklistEntry[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const checklistTemplateIds = useMemo(
-    () => checklist.map((item) => item.template_id),
+  // Monta os campos editáveis a partir dos templates da planta
+  useEffect(() => {
+    if (!templates) return;
+    const list: any[] = Array.isArray(templates)
+      ? templates
+      : (templates?.data ?? []);
+
+    setMeasurements(
+      list
+        .filter((t) => (t.type ?? "MEASUREMENT") !== "CHECKLIST")
+        .map((t) => ({
+          template_id: String(t.id),
+          field_name: t.field_name ?? "Campo",
+          unit: t.unit ?? "",
+          value: "",
+        }))
+    );
+
+    setChecklist(
+      list
+        .filter((t) => t.type === "CHECKLIST")
+        .map((t) => ({
+          template_id: String(t.id),
+          label: t.field_name ?? "Item",
+          checked: false,
+        }))
+    );
+  }, [templates]);
+
+  const checkedTemplateIds = useMemo(
+    () => checklist.filter((item) => item.checked).map((item) => item.template_id),
     [checklist]
   );
 
@@ -108,40 +128,52 @@ export default function RegistroScreen() {
   }
 
   async function handleSave() {
+    if (!list_id) {
+      Alert.alert(
+        "Lista não encontrada",
+        "Abra o registro a partir de um canteiro para vincular a lista de formulários."
+      );
+      return;
+    }
+
     try {
       setSaving(true);
 
-      const formularioResponse = await createFormulario({
-        list_id: list_id || MOCK_LIST_ID,
-        user_id: MOCK_USER_ID,
+      // 1) cria o formulário (registro semanal) na lista do canteiro
+      const formulario = await createFormulario({
+        list_id,
         type: "SEMANAL",
         observations,
       });
+      const formularioId = formulario?.id ?? formulario?.data?.id;
 
-      const formularioId = formularioResponse.data.id;
+      // 2) registra os itens de checklist marcados
+      if (checkedTemplateIds.length > 0) {
+        await createChecklistItems(formularioId, checkedTemplateIds);
+      }
 
-      await createChecklist(formularioId, checklistTemplateIds);
+      // 3) registra as medições preenchidas
+      const medicoesPreenchidas = measurements.filter((m) => m.value !== "");
+      if (medicoesPreenchidas.length > 0) {
+        await createMeasurements(
+          formularioId,
+          medicoesPreenchidas.map((measurement) => ({
+            template_id: measurement.template_id,
+            value: Number(measurement.value || 0),
+          }))
+        );
+      }
 
-      await createMeasurements(
-        formularioId,
-        measurements.map((measurement) => ({
-          template_id: measurement.template_id,
-          value: Number(measurement.value || 0),
-        }))
-      );
-
+      // 4) finaliza o formulário
       await finalizarFormulario(formularioId);
 
       router.replace(`/registro-salvo/${formularioId}`);
     } catch (error: any) {
       console.log("Erro ao salvar registro:", error);
-
       Alert.alert(
-        "Registro salvo localmente",
-        "Não foi possível sincronizar com a API agora. Vamos manter o fluxo visual enquanto o banco é ajustado."
+        "Erro ao salvar",
+        "Não foi possível salvar o registro agora. Tente novamente."
       );
-
-      router.replace("/registro-salvo/mock-registro");
     } finally {
       setSaving(false);
     }
@@ -192,20 +224,34 @@ export default function RegistroScreen() {
         </SectionCard>
 
         <SectionCard title="Medições" icon="📏">
-          <View className="flex-row flex-wrap justify-between">
-            {measurements.map((measurement) => (
-              <FieldBox
-                key={measurement.template_id}
-                label={`${measurement.field_name} (${measurement.unit})`}
-                value={measurement.value}
-                onChangeText={(value) =>
-                  updateMeasurement(measurement.template_id, value)
-                }
-              />
-            ))}
-          </View>
+          {loadingTemplates ? (
+            <View className="flex-row flex-wrap justify-between gap-y-3">
+              {[0, 1].map((i) => (
+                <Skeleton key={i} width="48%" height={64} radius={12} />
+              ))}
+            </View>
+          ) : (
+            <View className="flex-row flex-wrap justify-between">
+              {measurements.length === 0 ? (
+                <Text className="text-sm text-slate-400">
+                  Nenhum campo de medição configurado para esta planta.
+                </Text>
+              ) : (
+                measurements.map((measurement) => (
+                  <FieldBox
+                    key={measurement.template_id}
+                    label={`${measurement.field_name} (${measurement.unit})`}
+                    value={measurement.value}
+                    onChangeText={(value) =>
+                      updateMeasurement(measurement.template_id, value)
+                    }
+                  />
+                ))
+              )}
+            </View>
+          )}
 
-          <Text className="mb-2 text-xs font-bold uppercase text-slate-400">
+          <Text className="mb-2 mt-2 text-xs font-bold uppercase text-slate-400">
             Observações
           </Text>
 
@@ -225,14 +271,26 @@ export default function RegistroScreen() {
         </SectionCard>
 
         <SectionCard title="Checklist de Manejo" icon="✅">
-          {checklist.map((item) => (
-            <ChecklistItem
-              key={item.template_id}
-              label={item.label}
-              checked={item.checked}
-              onPress={() => toggleChecklistItem(item.template_id)}
-            />
-          ))}
+          {loadingTemplates ? (
+            <View className="gap-3">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} width="100%" height={40} radius={10} />
+              ))}
+            </View>
+          ) : checklist.length === 0 ? (
+            <Text className="text-sm text-slate-400">
+              Nenhum item de checklist configurado para esta planta.
+            </Text>
+          ) : (
+            checklist.map((item) => (
+              <ChecklistItem
+                key={item.template_id}
+                label={item.label}
+                checked={item.checked}
+                onPress={() => toggleChecklistItem(item.template_id)}
+              />
+            ))
+          )}
         </SectionCard>
 
         <Pressable

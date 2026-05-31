@@ -1,8 +1,9 @@
-import { Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import useSWR from "swr";
 import { getCanteirosByUser } from "@/database/canteiros";
 import { CanteiroCard } from "@/components/canteiros/CanteiroCard";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type CanteiroItem = {
   id: string;
@@ -53,8 +54,9 @@ const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
 
 export default function CanteirosScreen() {
   const { data: canteiros, error, isLoading } = useSWR('user-canteiros', getCanteirosByUser);
-  
-  const mappedCanteiros = canteiros?.map(mapCanteiroToCanteiro) || [];
+
+  const lista = Array.isArray(canteiros) ? canteiros : (canteiros?.data ?? []);
+  const mappedCanteiros: CanteiroItem[] = lista.map(mapCanteiroToCanteiro);
 
   return (
     <View className="flex-1 bg-slate-50">
@@ -71,9 +73,10 @@ export default function CanteirosScreen() {
         </View>
 
         {isLoading ? (
-          <View className="flex-1 justify-center items-center py-12">
-            <ActivityIndicator size="large" color="#059669" />
-            <Text className="text-slate-400 mt-2 text-sm">Carregando canteiros...</Text>
+          <View className="gap-4">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} width="100%" height={120} radius={16} />
+            ))}
           </View>
         ) : error ? (
           <View className="justify-center items-center py-12">

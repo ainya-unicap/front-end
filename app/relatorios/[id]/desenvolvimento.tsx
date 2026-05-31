@@ -1,92 +1,70 @@
 import StepControl from "@/components/forms/stepControll";
 import Warning from "@/components/forms/warning";
 import HeaderStack from "@/components/navigation/headerStack";
-import { Image } from "expo-image";
-import { useLocalSearchParams } from "expo-router";
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { View, ScrollView, TextInput, Alert } from "react-native";
+import useSWR from "swr";
+import {
+  getRelatorioById,
+  updateRelatorioDevelopment,
+} from "@/database/relatoriosService";
 
-export default function UserScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>();
+export default function DesenvolvimentoScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
 
-    return (
-        <>
-            <ScrollView>
-                
-                <View className="p-6 pt-0 gap-4 bg-[#f8fafc]">
-                    <HeaderStack title="Seção 3 — Desenvolvimento" />
-                    <Warning
-                        text="📋 Gerado automaticamente dos seus registros. Edite o texto de cada semana se desejar."
-                    />
-                    <View className="gap-2 border border-gray-200 rounded-xl p-4">
-                        <Text className="text-lg font-bold text-gray-400 mb-2 tracking-wider">Semana 1</Text>
-                        <View className="flex-row gap-2">
-                            <View className="border border-gray-200 rounded-xl px-4 py-2">
-                                <Text className="text-lg font-semibold">45cm</Text>
-                                <Text className="text-sm">Altura</Text>
-                            </View>
+  const { data: relatorio, isLoading } = useSWR(
+    id ? `relatorio-${id}` : null,
+    () => getRelatorioById(id)
+  );
 
-                            <View className="border border-gray-200 rounded-xl px-4 py-2">
-                                <Text className="text-lg font-semibold">72%</Text>
-                                <Text className="text-sm">Cobertura</Text>
-                            </View>
+  const [development, setDevelopment] = useState("");
 
-                            <View className="border border-gray-200 rounded-xl px-4 py-2">
-                                <Text className="text-lg font-semibold">Veg.</Text>
-                                <Text className="text-sm">Estação</Text>
-                            </View>
-                        </View>
+  // Carrega o texto de desenvolvimento já salvo no relatório
+  useEffect(() => {
+    const r = (relatorio as any)?.data ?? relatorio;
+    if (r) {
+      setDevelopment(r.development ?? "");
+    }
+  }, [relatorio]);
 
-                        <Image
-                            source={require('@/assets/images/planta.jpeg')}
-                            style={{ width: '100%', height: 200, borderRadius: 16 }}
-                        />
-                        {/*Text area */}
-                        <TextInput
-                            multiline
-                            numberOfLines={4}
-                            className="bg-white rounded-xl p-4 text-gray-700 text-base border border-gray-200"
-                            value="Crescimento uniforme. Solo com boa umidade. Sem sinais de pragas."
-                        />
-                    </View>
+  // Salva o desenvolvimento e volta para a visão geral do relatório
+  async function handleNext() {
+    try {
+      await updateRelatorioDevelopment(id, development);
+      router.push(`/relatorios/${id}`);
+    } catch (error) {
+      console.error("Erro ao salvar desenvolvimento:", error);
+      Alert.alert("Erro", "Não foi possível salvar o desenvolvimento agora.");
+    }
+  }
 
-                    <View className="gap-2 border border-gray-200 rounded-xl p-4">
-                        <Text className="text-lg font-bold text-gray-400 mb-2 tracking-wider">Semana 2</Text>
-                        <View className="flex-row gap-2">
-                            <View className="border border-gray-200 rounded-xl px-4 py-2">
-                                <Text className="text-lg font-semibold">45cm</Text>
-                                <Text className="text-sm">Altura</Text>
-                            </View>
+  return (
+    <>
+      <ScrollView>
+        <View className="p-6 pt-0 gap-4 bg-[#f8fafc]">
+          <HeaderStack title="Seção 3 — Desenvolvimento" />
+          <Warning text="📋 Gerado automaticamente dos seus registros. Edite o texto se desejar." />
 
-                            <View className="border border-gray-200 rounded-xl px-4 py-2">
-                                <Text className="text-lg font-semibold">72%</Text>
-                                <Text className="text-sm">Cobertura</Text>
-                            </View>
-
-                            <View className="border border-gray-200 rounded-xl px-4 py-2">
-                                <Text className="text-lg font-semibold">Veg.</Text>
-                                <Text className="text-sm">Estação</Text>
-                            </View>
-                        </View>
-
-                        <Image
-                            source={require('@/assets/images/planta.jpeg')}
-                            style={{ width: '100%', height: 200, borderRadius: 16 }}
-                        />
-                        {/*Text area */}
-                        <TextInput
-                            multiline
-                            numberOfLines={4}
-                            className="bg-white rounded-xl p-4 text-gray-700 text-base border border-gray-200"
-                            value="Crescimento uniforme. Solo com boa umidade. Sem sinais de pragas."
-                        />
-
-
-                    </View>
-
-
-                </View>
-            </ScrollView>
-            <StepControl nextStep={() => { }} />
-        </>
-    );
+          {isLoading ? (
+            <Skeleton width="100%" height={240} radius={12} />
+          ) : (
+            <TextInput
+              multiline
+              numberOfLines={12}
+              textAlignVertical="top"
+              placeholder="Descreva o desenvolvimento observado ao longo das semanas..."
+              placeholderTextColor="#94a3b8"
+              className="bg-white rounded-xl p-4 text-gray-700 text-base border border-gray-200 min-h-[240px]"
+              value={development}
+              onChangeText={setDevelopment}
+            />
+          )}
+        </View>
+      </ScrollView>
+      <StepControl nextStep={handleNext} />
+    </>
+  );
 }

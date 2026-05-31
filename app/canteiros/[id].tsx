@@ -1,24 +1,16 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { AntDesign } from "@expo/vector-icons";
+import useSWR from "swr";
+
+import { getCanteiroListas } from "@/database/canteiros";
+import { getListaFormularios } from "@/database/listasFormularios";
 
 import { StatusBadge } from "@/components/canteiros/StatusBadge";
 import { FilterChips } from "@/components/canteiros/FilterChips";
 import { FormularioCard } from "@/components/canteiros/FormularioCard";
 
-// ---------------------------------------------------------------------------
-// DADOS MOCKADOS — substituir por getFormulariosByUser/list (services/api.ts).
-// Para uma lista específica o ideal é um getFormulariosByLista(listId). Mapear
-// cada FormularioResumo/Completo para os campos abaixo:
-//   week           -> nº da semana (derivar de createdAt/started_at)
-//   status         -> COMPLETO/RASCUNHO/PENDENTE (campo de status no back-end)
-//   dateLabel      -> formatar started_at/ended_at
-//   photos         -> photos?.length
-//   checklistDone  -> checklists?.filter(c => c.checked).length
-//   checklistTotal -> checklists?.length
-//   progress       -> % de preenchimento (derivar)
-// ---------------------------------------------------------------------------
 type FormularioItem = {
   id: string;
   week: number;
@@ -30,58 +22,69 @@ type FormularioItem = {
   progress: number;
 };
 
-const MOCK_FORMULARIOS: FormularioItem[] = [
-  {
-    id: "form-12",
-    week: 12,
-    status: "COMPLETO",
-    dateLabel: "07 Abr 2026 · 08:00—10:30",
-    photos: 3,
-    checklistDone: 3,
-    checklistTotal: 5,
-    progress: 100,
-  },
-  {
-    id: "form-11",
-    week: 11,
-    status: "RASCUNHO",
-    dateLabel: "31 Mar 2026 · 08:15—09:45",
-    photos: 2,
-    checklistDone: 2,
-    checklistTotal: 5,
-    progress: 65,
-  },
-  {
-    id: "form-10",
-    week: 10,
-    status: "COMPLETO",
-    dateLabel: "24 Mar 2026",
-    photos: 4,
-    checklistDone: 5,
-    checklistTotal: 5,
-    progress: 100,
-  },
-  {
-    id: "form-9",
-    week: 9,
-    status: "COMPLETO",
-    dateLabel: "17 Mar 2026",
-    photos: 3,
-    checklistDone: 5,
-    checklistTotal: 5,
-    progress: 100,
-  },
-  {
-    id: "form-8",
-    week: 8,
-    status: "PENDENTE",
-    dateLabel: "10 Mar 2026",
-    photos: 0,
-    checklistDone: 0,
-    checklistTotal: 5,
-    progress: 0,
-  },
-];
+function formatDateLabel(formulario: any): string {
+  const raw =
+    formulario.data_preenchimento ??
+    formulario.createdAt ??
+    formulario.started_at;
+  if (!raw) return "";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function mapFormulario(formulario: any): FormularioItem {
+  const checklists = formulario.checklists ?? [];
+  const checklistTotal = checklists.length ?? 0;
+  const checklistDone = checklists.filter((c: any) => c.checked).length ?? 0;
+  const photos = formulario.photos?.length ?? formulario._count?.photos ?? 0;
+
+  const status: FormularioItem["status"] =
+    (formulario.status as FormularioItem["status"]) ??
+    (formulario.synced ? "COMPLETO" : "RASCUNHO");
+
+  const progress =
+    checklistTotal > 0
+      ? Math.round((checklistDone / checklistTotal) * 100)
+      : status === "COMPLETO"
+        ? 100
+        : 0;
+
+  return {
+    id: String(formulario.id),
+    week: formulario.semana ?? formulario.week ?? 0,
+    status,
+    dateLabel: formatDateLabel(formulario),
+    photos,
+    checklistDone,
+    checklistTotal,
+    progress,
+  };
+}
+
+// Busca a primeira lista do canteiro e seus formulários
+async function fetchFormularios(canteiroId: string) {
+  const listasResp = await getCanteiroListas(canteiroId);
+  const listas = Array.isArray(listasResp)
+    ? listasResp
+    : (listasResp?.data ?? []);
+  const lista = listas[0];
+  if (!lista?.id) {
+    return { listId: null as string | null, items: [] as FormularioItem[] };
+  }
+  const formulariosResp = await getListaFormularios(lista.id);
+  const formularios = Array.isArray(formulariosResp)
+    ? formulariosResp
+    : (formulariosResp?.data ?? []);
+  return {
+    listId: String(lista.id),
+    items: formularios.map(mapFormulario),
+  };
+}
 
 const FILTERS = ["Todos", "Completos", "Rascunhos", "Pendentes"];
 
@@ -97,19 +100,22 @@ export default function ListaFormulariosScreen() {
 
   const [filter, setFilter] = useState("Todos");
 
+  const { data, isLoading } = useSWR(id ? `canteiro-forms-${id}` : null, () =>
+    fetchFormularios(id)
+  );
+
+  const todos: FormularioItem[] = data?.items ?? [];
+  const listId: string | null = data?.listId ?? null;
+
   const formularios = useMemo(() => {
     const status = FILTER_STATUS[filter];
-
-    if (!status) {
-      return MOCK_FORMULARIOS;
-    }
-
-    return MOCK_FORMULARIOS.filter((item) => item.status === status);
-  }, [filter]);
+    if (!status) return todos;
+    return todos.filter((item) => item.status === status);
+  }, [filter, todos]);
 
   function handleNovoRegistro() {
-    // Abre a tela de criação de registro já com o list_id deste canteiro.
-    router.push({ pathname: "/registro", params: { list_id: id } });
+    // Abre a tela de criação de registro já com o list_id da lista do canteiro.
+    router.push({ pathname: "/registro", params: { list_id: listId ?? "" } });
   }
 
   return (
@@ -132,7 +138,7 @@ export default function ListaFormulariosScreen() {
           </Text>
         </View>
 
-        <StatusBadge label={`${MOCK_FORMULARIOS.length} REG.`} variant="green" />
+        <StatusBadge label={`${todos.length} REG.`} variant="green" />
       </View>
 
       <View className="px-5">
@@ -144,7 +150,9 @@ export default function ListaFormulariosScreen() {
         contentContainerClassName="pb-32"
         showsVerticalScrollIndicator={false}
       >
-        {formularios.length === 0 ? (
+        {isLoading ? (
+          <ActivityIndicator color="#065f46" className="mt-10" />
+        ) : formularios.length === 0 ? (
           <Text className="mt-10 text-center text-sm text-slate-400">
             Nenhum registro nesta categoria.
           </Text>
