@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AntDesign } from '@expo/vector-icons';
+import { getRelatorios } from '@/database/relatorios';
+import useSWR from 'swr';
 
 type Relatorio = {
   id: string;
@@ -15,11 +17,7 @@ type Relatorio = {
 export default function ListaRelatoriosScreen() {
   const router = useRouter();
 
-  const [relatorios] = useState<Relatorio[]>([
-    { id: '1', planta: 'Capim Massai', periodo: '2026.1 · 1º Sem.', registros: '12 registros · Submetido 07/04', status: 'CORRIGIDO', grade: 9.0 },
-    { id: '2', planta: 'Braquiária', periodo: '2026.1 · 1º Sem.', registros: '8 registros · Rascunho em edição', status: 'RASCUNHO' },
-    { id: '3', planta: 'Estilosantes', periodo: '2025.2 · 2º Sem.', registros: '10 registros · Período anterior', status: 'CORRIGIDO', grade: 8.5 },
-  ]);
+  const { data: relatorios, error, isLoading } = useSWR('relatorios', getRelatorios);
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -77,7 +75,7 @@ export default function ListaRelatoriosScreen() {
     <View className="flex-1 bg-[#f8fafc] px-5 pt-14 pb-[100px]">
       <View className="flex-row justify-between items-end mb-6">
         <Text className="text-2xl font-bold text-[#0f172a]">Meus Relatórios</Text>
-        <Text className="text-gray-400 text-sm mb-1 font-medium">{relatorios.length} relatórios</Text>
+        <Text className="text-gray-400 text-sm mb-1 font-medium">{relatorios?.length} relatórios</Text>
       </View>
       
       <FlatList

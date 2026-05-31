@@ -4,11 +4,13 @@ import { router } from "expo-router";
 import { ProfileHeader } from "@/components/perfil/ProfileHeader";
 import { ProfileSection } from "@/components/perfil/ProfileSection";
 import { ProfileRow } from "@/components/perfil/ProfileRow";
+import useSWR from "swr";
+import { getProfile } from "@/database/user";
 
 // ---------------------------------------------------------------------------
 // DADOS MOCKADOS — substituir pelos dados reais do BD.
 //
-// Trocar por um getPerfil(userId) em services/api.ts e carregar via useEffect,
+// Trocar por um getProfile(userId) em services/api.ts e carregar via useEffect,
 // guardando o resultado em estado no lugar de MOCK_PERFIL. Os campos abaixo já
 // espelham o que cada linha exibe na tela.
 // ---------------------------------------------------------------------------
@@ -23,6 +25,17 @@ const MOCK_PERFIL = {
 };
 
 export default function PerfilScreen() {
+  const { data: perfil, error: errorPerfil, isLoading: isLoadingPerfil } = useSWR("perfil", () => getProfile());
+
+
+  if (isLoadingPerfil) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <Text className="text-lg font-semibold">Carregando perfil...</Text>
+      </View>
+    );
+  }
+
   function handleLogout() {
     // TODO(BD): limpar sessão/token armazenado antes de redirecionar.
     router.replace("/login");
@@ -34,7 +47,7 @@ export default function PerfilScreen() {
         contentContainerClassName="pb-32"
         showsVerticalScrollIndicator={false}
       >
-        <ProfileHeader name={MOCK_PERFIL.name} email={MOCK_PERFIL.email} />
+        <ProfileHeader name={perfil?.name} email={perfil?.email} />
 
         <View className="px-5 pt-5">
           <ProfileSection title="Perfil">
@@ -42,13 +55,13 @@ export default function PerfilScreen() {
               icon="👤"
               iconBg="bg-violet-100"
               label="Nome completo"
-              value={MOCK_PERFIL.name}
+              value={perfil?.name}
             />
             <ProfileRow
               icon="📧"
               iconBg="bg-sky-100"
               label="E-mail"
-              value={MOCK_PERFIL.email}
+              value={perfil?.email}
             />
             <ProfileRow
               icon="🔒"
@@ -64,19 +77,19 @@ export default function PerfilScreen() {
               icon="🏛️"
               iconBg="bg-amber-100"
               label="Instituição"
-              value={MOCK_PERFIL.institution}
+              value={perfil?.institution?.name}
             />
             <ProfileRow
               icon="📅"
               iconBg="bg-orange-100"
               label="Período letivo"
-              value={MOCK_PERFIL.period}
+              value={"Sem período vinculado"}
             />
             <ProfileRow
               icon="👥"
               iconBg="bg-violet-100"
               label="Turma"
-              value={MOCK_PERFIL.turma}
+              value={"Sem turma vinculada"}
               isLast
             />
           </ProfileSection>

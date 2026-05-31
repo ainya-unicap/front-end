@@ -18,6 +18,14 @@ export function saveRefreshToken(token: string) {
     `, ["refresh_token", token]);
 }
 
+export function saveUserId(userId: string) {
+    db.runSync(`
+        INSERT INTO auth (key, value)
+        VALUES (?, ?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value;
+    `, ["user_id", userId]);
+}
+
 export function deleteAccessToken() {
     db.runSync(`
         DELETE FROM auth WHERE key = ?;
@@ -28,6 +36,12 @@ export function deleteRefreshToken() {
     db.runSync(`
         DELETE FROM auth WHERE key = ?;
     `, ["refresh_token"]);
+}
+
+export function deleteUserId() {
+    db.runSync(`
+        DELETE FROM auth WHERE key = ?;
+    `, ["user_id"]);
 }
 
 export function getAccessToken(): string | null {
@@ -47,6 +61,14 @@ export function getRefreshToken(): string | null {
   return row?.value ?? null;
 }
 
+export function getUserId(): string | null {
+  const row = db.getFirstSync<{ value: string }>(
+    `SELECT value FROM auth WHERE key = ?`,
+    ['user_id']
+  );
+  return row?.value ?? null;
+}
+
 export async function cadastro({ role, name, email, instituicao, senha }: any) {
     try {
         const response = await api.post('users', { role, name, email, instituicao, password: senha }); 
@@ -62,6 +84,7 @@ export async function login({ email, senha }: any) {
         const response = await api.post('users/login', { email, password: senha });
         saveAccessToken(response.data.accessToken);
         saveRefreshToken(response.data.refreshToken);
+        saveUserId(response.data.id);
         return {
             status: response.status,
             data: response.data
