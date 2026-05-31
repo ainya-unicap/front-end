@@ -5,6 +5,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import "@/global.css";
+import { initDatabase } from '@/database/localDb';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -12,6 +13,7 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  initDatabase();
 
   return (
     <ThemeProvider value={DefaultTheme}>
