@@ -1,10 +1,10 @@
 import { getUserId } from "./auth";
 import { api } from "./index";
 
-export function getRelatorios() {
+export async function getRelatorios() {
     try {
-        const response = api.get(`relatorios/user/${getUserId()}`);
-        return response;
+        const response = await api.get(`relatorios/user/${getUserId()}`);
+        return response.data;
     } catch (error) {
         console.error('Error fetching relatorios:', error);
         throw error;
