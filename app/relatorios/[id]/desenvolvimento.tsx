@@ -34,7 +34,7 @@ export default function DesenvolvimentoScreen() {
   async function handleNext() {
     try {
       await updateRelatorioDevelopment(id, development);
-      router.push(`/relatorios/${id}`);
+      router.push(`/relatorios/${id}/consideracoes`);
     } catch (error) {
       console.error("Erro ao salvar desenvolvimento:", error);
       Alert.alert("Erro", "Não foi possível salvar o desenvolvimento agora.");
