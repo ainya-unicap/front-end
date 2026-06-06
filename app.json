@@ -4,6 +4,7 @@
     "slug": "front-end",
     "version": "1.0.0",
     "orientation": "portrait",
+    "owner": "prantas",
     "icon": "./assets/images/icon.png",
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",

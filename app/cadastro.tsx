@@ -8,6 +8,7 @@ import useSWR from 'swr';
 import { getInstitutions } from '@/database/institutions';
 import { cadastro, saveAccessToken } from '@/database/auth';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Cadastro() {
     const router = useRouter();
@@ -51,7 +52,7 @@ export default function Cadastro() {
     return (
         <>
             <StatusBar style="dark" />
-            <View className='p-6 bg-gray-50 min-h-screen'>
+            <SafeAreaView className='p-6 bg-gray-50 min-h-screen'>
                 <View>
                     <Text className='text-md font-semibold text-black/70'>Você é</Text>
                     <View className='flex-row gap-4'>
@@ -99,7 +100,7 @@ export default function Cadastro() {
                 </TouchableOpacity>
                 <Text>{isLoading ? 'Carregando instituicoes...' : ''}</Text>
                 <Text>{instituicoesError ? 'Erro ao carregar instituicoes' : ''}</Text>
-            </View>
+            </SafeAreaView>
         </>
     )
 }
