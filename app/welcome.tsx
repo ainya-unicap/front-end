@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, useRootNavigationState } from 'expo-router';
 import { StyleSheet, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -8,7 +8,17 @@ import { useEffect } from 'react';
 
 export default function ModalScreen() {
   const router = useRouter();
-  setTimeout(() => router.push("/login"), 5000)
+  const rootNavigationState = useRootNavigationState();
+
+  useEffect(() => {
+    if (!rootNavigationState?.key) return; // aguarda o layout montar
+
+    const timer = setTimeout(() => {
+      router.push('/login');
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [rootNavigationState?.key]);
 
   return (
     <View className='flex-1 items-center justify-center'>
