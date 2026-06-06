@@ -1,50 +1,58 @@
-# Welcome to your Expo app 👋
+# Forrage App — Frontend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicativo mobile (Expo / React Native) para **acompanhamento de plantas
+forrageiras**: alunos registram semanalmente o desenvolvimento das plantas por
+canteiro (medições, checklist de manejo, fotos e observações) e geram
+relatórios acadêmicos a partir desses registros.
 
-## Get started
+Projeto Integrador IV — Unicap 2026.1.
 
-1. Install dependencies
+## Equipe
+
+| Nome                              | RA     |
+| --------------------------------- | ------ |
+| Iwerson Guilherme da Silva Souza  | 855213 |
+| Deivyson Ricardo Silva dos Santos | 855214 |
+| Júlia Muniz Cavalheiro de Oliveira| 855158 |
+| Ingrid Beatriz Silva              | 855232 |
+| Luana Cabral da Silva             | 853756 |
+| Ailton Cesar Anizio dos Santos    |        |
+| João Vitor Nascimento Paraizo     |        |
+
+## Stack
+
+- **Expo / React Native** com **Expo Router** (rotas por arquivos)
+- **NativeWind** (Tailwind no React Native) para estilização
+- **SWR** + **axios** para consumo da API
+- **expo-sqlite** para sessão/token local
+
+## Como rodar
+
+1. Instale as dependências:
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. Inicie o app:
 
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+No output você pode abrir em emulador Android, simulador iOS, web ou no
+[Expo Go](https://expo.dev/go).
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Estrutura
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+app/                  → telas (Expo Router)
+components/<feature>/  → componentes agrupados por feature
+database/              → camada de dados (axios, SWR, SQLite)
+docs/                  → documentação do projeto
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+O fluxo principal é: **Canteiros → Nova lista → Registros semanais → Relatório**.
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Mais detalhes da implementação em
+[`docs/RELATORIO-FRONTEND.md`](docs/RELATORIO-FRONTEND.md).

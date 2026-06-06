@@ -1,0 +1,12 @@
+node_modules
+.env
+dist
+coverage
+*.log
+.idea
+.vscode
+.DS_Store
+android
+
+expo-env.d.ts
+# @end expo-cli

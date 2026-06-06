@@ -4,6 +4,7 @@
     "slug": "front-end",
     "version": "1.0.0",
     "orientation": "portrait",
+    "owner": "prantas",
     "icon": "./assets/images/icon.png",
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
@@ -19,7 +20,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.deivyson05.frontend"
     },
     "web": {
       "output": "static",
@@ -38,11 +40,24 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b4e1f5f4-ab15-4242-b9d6-281cfb2786f4"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b4e1f5f4-ab15-4242-b9d6-281cfb2786f4"
     }
   }
 }
