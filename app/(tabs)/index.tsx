@@ -64,14 +64,14 @@ export default function HomeScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-6 pb-32 pt-6"
+        contentContainerClassName="px-6 pb-32 pt-6 md:px-20"
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-5">
           <Text className="text-2xl font-bold text-slate-950">Ações rápidas</Text>
         </View>
 
-        <View className="mb-8 flex-row flex-wrap justify-between gap-y-3">
+        <View className="mb-8 flex-row flex-wrap justify-between gap-3">
           <QuickActionCard
             icon="📝"
             title="Novo Registro"
@@ -105,35 +105,37 @@ export default function HomeScreen() {
           Registros recentes
         </Text>
 
-        {loading ? (
-          <View className="gap-3">
-            {[0, 1, 2].map((i) => (
-              <View
-                key={i}
-                className="flex-row items-center rounded-2xl bg-white px-4 py-4"
-              >
-                <Skeleton width={12} height={12} radius={6} />
-                <View className="ml-4 flex-1 gap-2">
-                  <Skeleton width="70%" height={16} />
-                  <Skeleton width="40%" height={12} />
+        <View className="lg:flex-row gap-2 lg:flex-wrap">
+          {loading ? (
+            <View className="gap-3">
+              {[0, 1, 2].map((i) => (
+                <View
+                  key={i}
+                  className="flex-row items-center rounded-2xl bg-white px-4 py-4"
+                >
+                  <Skeleton width={12} height={12} radius={6} />
+                  <View className="ml-4 flex-1 gap-2">
+                    <Skeleton width="70%" height={16} />
+                    <Skeleton width="40%" height={12} />
+                  </View>
                 </View>
-              </View>
-            ))}
-          </View>
-        ) : registrosRecentes.length === 0 ? (
-          <View className="items-center rounded-2xl bg-white p-8">
-            <Text className="text-base font-semibold text-slate-500">
-              Nenhum registro ainda
-            </Text>
-            <Text className="mt-1 text-sm text-slate-400">
-              Crie seu primeiro registro semanal
-            </Text>
-          </View>
-        ) : (
-          registrosRecentes.map((item) => (
-            <RecentRecordCard key={item.id} item={item} />
-          ))
-        )}
+              ))}
+            </View>
+          ) : registrosRecentes.length === 0 ? (
+            <View className="items-center rounded-2xl bg-white p-8">
+              <Text className="text-base font-semibold text-slate-500">
+                Nenhum registro ainda
+              </Text>
+              <Text className="mt-1 text-sm text-slate-400">
+                Crie seu primeiro registro semanal
+              </Text>
+            </View>
+          ) : (
+            registrosRecentes.map((item) => (
+              <RecentRecordCard key={item.id} item={item} />
+            ))
+          )}
+        </View>
       </ScrollView>
 
       <BottomNavbar active="home" />

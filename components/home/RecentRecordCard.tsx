@@ -33,7 +33,7 @@ export function RecentRecordCard({ item }: RecentRecordCardProps) {
   return (
     <Pressable
       onPress={() => router.push(`/registro-salvo/${item.id}`)}
-      className="mb-3 flex-row items-center rounded-2xl bg-white px-4 py-4 shadow-sm active:opacity-80"
+      className="mb-3 flex-row items-center rounded-2xl bg-white px-4 py-4 shadow-sm active:opacity-80 lg:w-[48%]"
     >
       <View
         className={`mr-4 h-3 w-3 rounded-full ${
