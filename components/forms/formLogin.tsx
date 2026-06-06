@@ -39,7 +39,7 @@ export default function FormLogin() {
             >
                 <Text className="text-white text-center font-semibold">Entrar</Text>
             </TouchableOpacity>
-            <Text className="text-center mt-4">Ainda não possui uma conta? <Link href="/cadastro"><Text className="text-green-700 font-semibold">Cadastrar</Text></Link></Text>
+            <Text className="text-center mt-4 mb-6">Ainda não possui uma conta? <Link href="/cadastro"><Text className="text-green-700 font-semibold">Cadastrar</Text></Link></Text>
         </View>
     )
 }

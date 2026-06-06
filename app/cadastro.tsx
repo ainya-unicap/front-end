@@ -95,7 +95,7 @@ export default function Cadastro() {
                     <Input1 label="Senha" placeholder="Digite sua senha" value={senha} onChangeText={setSenha} />
                     <Input1 label="Confirmar Senha" placeholder="Confirme sua senha" value={confirmarSenha} onChangeText={setConfirmarSenha} />
                 </View>
-                <TouchableOpacity className="bg-green-700 rounded-lg py-4 mt-4" onPress={handleCadastro}>
+                <TouchableOpacity className="bg-green-700 rounded-lg py-4 mt-4 mb-6" onPress={handleCadastro}>
                     <Text className="text-white text-center font-semibold">Cadastrar</Text>
                 </TouchableOpacity>
                 <Text>{isLoading ? 'Carregando instituicoes...' : ''}</Text>
