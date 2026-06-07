@@ -103,6 +103,17 @@ export default function PerfilScreen() {
             />
           </ProfileSection>
 
+          <ProfileSection title="Aplicativo">
+            <ProfileRow
+              icon="ℹ️"
+              iconBg="bg-sky-100"
+              label="Sobre"
+              value="Informações e versão do app"
+              onPress={() => router.push("/sobre" as any)}
+              isLast
+            />
+          </ProfileSection>
+
           <Pressable
             onPress={handleLogout}
             className="mt-1 items-center rounded-2xl bg-red-50 py-4 active:opacity-80"
