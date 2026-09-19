@@ -96,20 +96,22 @@ export default function CanteiroScreen() {
 
     return (
         <View className="flex-1 bg-slate-50">
-            {/* Cabeçalho */}
             <View className="px-5 pb-5 pt-14">
                 <View className="flex-row items-center justify-between">
                     <Text className="text-2xl font-bold text-slate-950">
-                        Canteiros
+                        Meu Canteiro
                     </Text>
 
+                    {/* Não removi por completo melhor só comentar...
+                    
                     <View className="h-11 w-11 items-center justify-center rounded-full bg-emerald-100">
                         <MaterialCommunityIcons
                             name="sprout"
                             size={24}
                             color="#166534"
                         />
-                    </View>
+                    </View> */}
+
                 </View>
             </View>
 
@@ -123,6 +125,7 @@ export default function CanteiroScreen() {
                         <CanteiroCard key={canteiro.id} canteiro={canteiro} />
                     ))
                 ) : (
+
                     /* Mensagem quando está vazio */
                     <View className="items-center rounded-2xl bg-white px-6 py-12 shadow-sm">
                         <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
@@ -137,7 +140,7 @@ export default function CanteiroScreen() {
                         </Text>
 
                         <Text className="mt-2 text-center text-sm text-slate-400">
-                            Adicione um novo canteiro para começar a acompanhar suas plantas.
+                            Cadastre o seu canteiro para começar a acompanhar a sua planta.
                         </Text>
                     </View>
                 )}
@@ -149,7 +152,7 @@ export default function CanteiroScreen() {
                     <Ionicons name="add-circle-outline" size={21} color="#166534" />
 
                     <Text className="ml-2 text-sm font-bold text-emerald-800">
-                        Adicionar novo canteiro
+                        Cadastrar Canteiro
                     </Text>
                 </Pressable>
             </ScrollView>
