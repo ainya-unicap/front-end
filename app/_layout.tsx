@@ -27,6 +27,7 @@ export default function RootLayout() {
         }}
       >
         <Stack>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="welcome" options={{ headerShown: false}} />
           <Stack.Screen name="login" options={{ headerShown: false}} />
           <Stack.Screen name="cadastro" options={{ title: 'Criar conta' }} />
@@ -38,7 +39,6 @@ export default function RootLayout() {
           <Stack.Screen name="relatorios/[id]/index" options={{ headerShown: false}} />
           <Stack.Screen name="relatorios/[id]/desenvolvimento" options={{ headerShown: false}} />
           <Stack.Screen name="registro" options={{ headerShown: false}} />
-          
         </Stack>
       </SWRConfig>
       <StatusBar style="dark" />
