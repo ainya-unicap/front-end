@@ -1,7 +1,6 @@
 import db from "./localDb";
 import { api } from "./index";
-import { extractApiError } from "@/lib/apiError";
-import { parsePerfil, PerfilAcademico } from "@/lib/perfil";
+import { Alert } from "react-native";
 
 export function saveAccessToken(token: string) {
     db.runSync(`
@@ -70,51 +69,13 @@ export function getUserId(): string | null {
   return row?.value ?? null;
 }
 
-export type CadastroInput = {
-    role: PerfilAcademico;
-    name: string;
-    matricula: string;
-    email: string;
-    instituicao: string;
-    senha: string;
-};
-
-export type CadastroResult =
-    | { ok: true; perfil: PerfilAcademico | null }
-    | { ok: false; message: string };
-
-/**
- * Cria a conta enviando a matrícula junto do perfil escolhido. A confirmação
- * definitiva do vínculo (aluno ou professor) é responsabilidade do backend.
- */
-export async function cadastro({
-    role,
-    name,
-    matricula,
-    email,
-    instituicao,
-    senha,
-}: CadastroInput): Promise<CadastroResult> {
+export async function cadastro({ role, name, email, instituicao, senha }: any) {
     try {
-        const response = await api.post('users', {
-            role,
-            name,
-            matricula,
-            email,
-            instituicao,
-            password: senha,
-        });
-
-        return { ok: true, perfil: parsePerfil(response.data?.role) };
+        const response = await api.post('users', { role, name, email, instituicao, password: senha }); 
+        return response.data;
     } catch (error) {
-        console.error('Error during registration:', error);
-        return {
-            ok: false,
-            message: extractApiError(
-                error,
-                'Não foi possível concluir o cadastro. Tente novamente.'
-            ),
-        };
+        console.error('Error fetching institutions:', error);
+        throw error;
     }
 }
 
