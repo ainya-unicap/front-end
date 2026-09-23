@@ -14,7 +14,6 @@ import { BottomNavbar } from "@/components/navigation/BottomNavbar";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 // Extrai um array independentemente do formato que a API devolver
-// (array puro, { data: [...] }, { formularios: [...] }, etc.)
 function toArray(value: any): any[] {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.data)) return value.data;
@@ -24,7 +23,7 @@ function toArray(value: any): any[] {
   return [];
 }
 
-// Chave de "semana" de um formulário (usada para contar semanas distintas)
+// Chave de "semana" de um formulário
 function weekKey(formulario: any): string {
   if (formulario.semana != null) return String(formulario.semana);
   const raw = formulario.createdAt ?? formulario.data_preenchimento ?? "";
@@ -56,7 +55,8 @@ export default function HomeScreen() {
     [formularios, relatorios]
   );
 
-  const registrosRecentes = formularios.slice(0, 3);
+  // Puxar os 2 últimos formulários
+  const registrosRecentes = formularios.slice(0, 2);
 
   return (
     <View className="flex-1 bg-slate-50">
@@ -88,7 +88,7 @@ export default function HomeScreen() {
 
           <QuickActionCard
             icon="📄"
-            title="Relatório"
+            title="Resumo" // Palavra alterada conforme solicitado
             subtitle="Gerar ou editar"
             onPress={() => router.push("/relatorios")}
           />
@@ -108,7 +108,7 @@ export default function HomeScreen() {
         <View className="lg:flex-row gap-2 lg:flex-wrap">
           {loading ? (
             <View className="gap-3">
-              {[0, 1, 2].map((i) => (
+              {[0, 1].map((i) => (
                 <View
                   key={i}
                   className="flex-row items-center rounded-2xl bg-white px-4 py-4"
@@ -124,10 +124,10 @@ export default function HomeScreen() {
           ) : registrosRecentes.length === 0 ? (
             <View className="items-center rounded-2xl bg-white p-8">
               <Text className="text-base font-semibold text-slate-500">
-                Nenhum registro ainda
+                Não há relatórios
               </Text>
               <Text className="mt-1 text-sm text-slate-400">
-                Crie seu primeiro registro semanal
+                Crie seu primeiro registro
               </Text>
             </View>
           ) : (

@@ -15,6 +15,8 @@ function formatDate(dateString: string) {
   });
 }
 
+// A função foi mantida no código para não impactar o trabalho do grupo, 
+// caso alguém vá utilizá-la em outra branch futuramente.
 function getWeekNumber(dateString: string) {
   const date = new Date(dateString);
   const yearStart = new Date(date.getFullYear(), 0, 1);
@@ -27,8 +29,10 @@ function getWeekNumber(dateString: string) {
 
 export function RecentRecordCard({ item }: RecentRecordCardProps) {
   const plantName = item.list?.plant?.name || "Planta";
-  const week = getWeekNumber(item.createdAt);
-  const status = item.synced ? "Sincronizado" : "Pendente";
+  const formattedDate = formatDate(item.createdAt);
+  
+  // Termos práticos para evidenciar se subiu para o banco ou se está aguardando internet
+  const status = item.synced ? "Sincronizado na nuvem" : "Salvo offline";
 
   return (
     <Pressable
@@ -42,12 +46,14 @@ export function RecentRecordCard({ item }: RecentRecordCardProps) {
       />
 
       <View className="flex-1">
+        {/* Título alterado para "Data — Nome da Planta" em destaque */}
         <Text className="text-base font-bold text-slate-900">
-          Semana {week} — {plantName}
+          {formattedDate} — {plantName}
         </Text>
 
+        {/* Subtítulo agora exibe apenas a informação sobre o status de salvamento */}
         <Text className="mt-1 text-sm text-slate-400">
-          {formatDate(item.createdAt)} · {status}
+          {status}
         </Text>
       </View>
 
