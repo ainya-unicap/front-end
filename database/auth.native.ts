@@ -1,6 +1,7 @@
 import db from "./localDb";
 import { api } from "./index";
-import { Alert } from "react-native";
+import { extractApiError } from "@/lib/apiError";
+import { parsePerfil, PerfilAcademico } from "@/lib/perfil";
 
 export function saveAccessToken(token: string) {
     db.runSync(`
@@ -69,32 +70,89 @@ export function getUserId(): string | null {
   return row?.value ?? null;
 }
 
-export async function cadastro({ role, name, email, instituicao, senha }: any) {
+export type CadastroInput = {
+    role: PerfilAcademico;
+    name: string;
+    matricula: string;
+    email: string;
+    instituicao: string;
+    senha: string;
+};
+
+export type CadastroResult =
+    | { ok: true; perfil: PerfilAcademico | null }
+    | { ok: false; message: string };
+
+/**
+ * Cria a conta enviando a matrícula junto do perfil escolhido. A confirmação
+ * definitiva do vínculo (aluno ou professor) é responsabilidade do backend.
+ */
+export async function cadastro({
+    role,
+    name,
+    matricula,
+    email,
+    instituicao,
+    senha,
+}: CadastroInput): Promise<CadastroResult> {
     try {
-        const response = await api.post('users', { role, name, email, instituicao, password: senha }); 
-        return response.data;
+        const response = await api.post('users', {
+            role,
+            name,
+            matricula,
+            email,
+            instituicao,
+            password: senha,
+        });
+
+        return { ok: true, perfil: parsePerfil(response.data?.role) };
     } catch (error) {
-        console.error('Error fetching institutions:', error);
-        throw error;
+        console.error('Error during registration:', error);
+        return {
+            ok: false,
+            message: extractApiError(
+                error,
+                'Não foi possível concluir o cadastro. Tente novamente.'
+            ),
+        };
     }
 }
 
-export async function login({ email, senha }: any) {
+export type LoginInput = {
+    matricula: string;
+    senha: string;
+};
+
+export type LoginResult =
+    | { ok: true; perfil: PerfilAcademico | null }
+    | { ok: false; message: string };
+
+/**
+ * Autentica pela matrícula. O perfil (aluno ou professor) é definido pelo
+ * backend e apenas lido aqui — o cliente não deduz o vínculo acadêmico.
+ */
+export async function login({ matricula, senha }: LoginInput): Promise<LoginResult> {
     try {
-        const response = await api.post('users/login', { email, password: senha });
-        saveAccessToken(response.data.accessToken);
-        saveRefreshToken(response.data.refreshToken);
-        saveUserId(response.data.id);
-        return {
-            status: response.status,
-            data: response.data
-        }
-    } catch (error: any) {
+        const response = await api.post('users/login', { matricula, password: senha });
+        const { accessToken, refreshToken, id, role } = response.data ?? {};
+
+        if (accessToken) saveAccessToken(accessToken);
+        if (refreshToken) saveRefreshToken(refreshToken);
+        if (id) saveUserId(id);
+
+        const perfil = parsePerfil(role);
+        if (perfil) saveUserRole(perfil);
+
+        return { ok: true, perfil };
+    } catch (error) {
         console.error('Error during login:', error);
         return {
-            status: error.response?.status || 500,
-            data: "Ocorreu um erro ao realizar o login."
-        }
+            ok: false,
+            message: extractApiError(
+                error,
+                'Não foi possível entrar. Confira sua matrícula e senha.'
+            ),
+        };
     }
 }
 
@@ -103,6 +161,7 @@ export async function logout() {
         const response = await api.post('users/logout', { refreshToken: getRefreshToken() });
         deleteAccessToken();
         deleteRefreshToken();
+        deleteUserRole();
         return {
             status: response.status,
             data: response.data
@@ -114,4 +173,26 @@ export async function logout() {
             data: "Ocorreu um erro ao realizar o logout."
         }
     }
+}
+
+export function saveUserRole(role: PerfilAcademico) {
+    db.runSync(`
+        INSERT INTO auth (key, value)
+        VALUES (?, ?)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value;
+    `, ["user_role", role]);
+}
+
+export function getUserRole(): PerfilAcademico | null {
+  const row = db.getFirstSync<{ value: string }>(
+    `SELECT value FROM auth WHERE key = ?`,
+    ['user_role']
+  );
+  return parsePerfil(row?.value ?? null);
+}
+
+export function deleteUserRole() {
+    db.runSync(`
+        DELETE FROM auth WHERE key = ?;
+    `, ["user_role"]);
 }
