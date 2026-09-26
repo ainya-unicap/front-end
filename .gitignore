@@ -6,6 +6,7 @@ coverage
 .idea
 .vscode
 .DS_Store
+.expo/
 android
 
 expo-env.d.ts
