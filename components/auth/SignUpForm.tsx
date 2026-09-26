@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { cadastro } from "@/database/auth";
 import { getInstitutions } from "@/database/institutions";
-import { normalizeMatricula, validateMatricula } from "@/lib/matricula";
+import { normalizeMatricula, validateMatricula } from "@/lib/email";
 import { PerfilAcademico } from "@/lib/perfil";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

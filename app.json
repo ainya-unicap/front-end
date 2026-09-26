@@ -8,6 +8,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
+    "softwareKeyboardLayoutMode": "resize",
     "ios": {
       "supportsTablet": true
     },
