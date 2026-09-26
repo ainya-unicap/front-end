@@ -119,7 +119,7 @@ export async function cadastro({
 }
 
 export type LoginInput = {
-    matricula: string;
+    email: string;
     senha: string;
 };
 
@@ -131,9 +131,9 @@ export type LoginResult =
  * Autentica pela matrícula. O perfil (aluno ou professor) é definido pelo
  * backend e apenas lido aqui — o cliente não deduz o vínculo acadêmico.
  */
-export async function login({ matricula, senha }: LoginInput): Promise<LoginResult> {
+export async function login({ email, senha }: LoginInput): Promise<LoginResult> {
     try {
-        const response = await api.post('users/login', { matricula, password: senha });
+        const response = await api.post('users/login', { email, password: senha });
         const { accessToken, refreshToken, id, role } = response.data ?? {};
 
         if (accessToken) saveAccessToken(accessToken);
@@ -150,7 +150,7 @@ export async function login({ matricula, senha }: LoginInput): Promise<LoginResu
             ok: false,
             message: extractApiError(
                 error,
-                'Não foi possível entrar. Confira sua matrícula e senha.'
+                'Não foi possível entrar. Confira seu email e senha.'
             ),
         };
     }

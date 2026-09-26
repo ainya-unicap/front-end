@@ -1,45 +1,45 @@
 import { Link, useRouter } from "expo-router";
-import { CheckCircle2, IdCard, Lock } from "lucide-react-native";
+import { CheckCircle2, Lock, AtSign } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { login } from "@/database/auth";
-import { normalizeMatricula, validateMatricula } from "@/lib/matricula";
+import { normalizeEmail, validateEmail } from "@/lib/email";
 import { PERFIL_LABEL, PerfilAcademico } from "@/lib/perfil";
 
 export function LoginForm() {
   const router = useRouter();
 
-  const [matricula, setMatricula] = useState("");
+  const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [perfil, setPerfil] = useState<PerfilAcademico | null>(null);
 
-  const matriculaCheck = useMemo(
-    () => validateMatricula(matricula),
-    [matricula]
+  const emailCheck = useMemo(
+    () => validateEmail(email),
+    [email]
   );
 
   const senhaError = submitted && !senha ? "Informe sua senha." : undefined;
-  const matriculaError =
-    submitted && !matriculaCheck.valid ? matriculaCheck.message : undefined;
+  const emailError =
+    submitted && !emailCheck.valid ? emailCheck.message : undefined;
 
-  function handleMatriculaChange(value: string) {
-    setMatricula(normalizeMatricula(value));
+  function handleEmailChange(value: string) {
+    setEmail(normalizeEmail(value));
     setPerfil(null);
   }
 
   async function handleSubmit() {
     setSubmitted(true);
 
-    if (!matriculaCheck.valid || !senha) return;
+    if (!emailCheck.valid || !senha) return;
 
     setSubmitting(true);
 
-    const result = await login({ matricula: matriculaCheck.value, senha });
+    const result = await login({ email: emailCheck.value, senha });
 
     setSubmitting(false);
 
@@ -59,19 +59,19 @@ export function LoginForm() {
       </Text>
 
       <TextField
-        label="Matrícula"
-        value={matricula}
-        onChangeText={handleMatriculaChange}
-        placeholder="Digite sua matrícula"
-        keyboardType="numbers-and-punctuation"
+        label="Email"
+        value={email}
+        onChangeText={handleEmailChange}
+        placeholder="Digite seu email"
+        keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="next"
         textContentType="username"
         icon={
-          <IdCard size={20} color={matriculaError ? "#ef4444" : "#64748b"} />
+          <AtSign size={20} color={emailError ? "#ef4444" : "#64748b"} />
         }
-        tone={matriculaError ? "error" : perfil ? "success" : "neutral"}
+        tone={emailError ? "error" : perfil ? "success" : "neutral"}
         trailing={
           perfil ? (
             <View className="rounded-full bg-emerald-100 px-2.5 py-1">
@@ -81,14 +81,8 @@ export function LoginForm() {
             </View>
           ) : undefined
         }
-        helper={
-          matriculaError ??
-          (perfil
-            ? `Perfil identificado: ${PERFIL_LABEL[perfil]}`
-            : "Usada para identificar seu vínculo acadêmico.")
-        }
         helperIcon={
-          perfil && !matriculaError ? (
+          perfil && !emailError ? (
             <CheckCircle2 size={14} color="#047857" />
           ) : undefined
         }
