@@ -1,3 +1,4 @@
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { Stack } from 'expo-router';
@@ -18,6 +19,7 @@ export default function RootLayout() {
   initDatabase();
 
   return (
+
     <KeyboardProvider>
       <ThemeProvider value={DefaultTheme}>
         <SWRConfig
