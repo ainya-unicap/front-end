@@ -16,7 +16,15 @@ export async function getFormularios() {
 
 export async function createFormulario(data: { list_id: string; type: FormularioType; observations?: string }) {
     try {
-        const response = await api.post('formularios', data);
+        const userId = getUserId();
+        if (!userId) {
+            throw new Error('Usuário não autenticado para criar o formulário.');
+        }
+
+        const response = await api.post('formularios', {
+            ...data,
+            user_id: userId,
+        });
         return response.data;
     } catch (error) {
         console.error('Error creating formulario:', error);
@@ -105,17 +113,35 @@ export async function getFormularioPhotos(id: string) {
     }
 }
 
-export async function uploadFormularioPhoto(formId: string, photo: any) {
+export async function uploadFormularioPhoto(
+    formId: string,
+    photo: { uri: string; mimeType: string; fileName: string }
+) {
     try {
+        if (!formId || !photo?.uri) {
+            return null;
+        }
+
+        const userId = getUserId();
+        if (!userId) {
+            throw new Error('Usuário não autenticado para enviar a foto.');
+        }
+
         const formData = new FormData();
-        formData.append('file', photo);
-        
-        const response = await api.post(`formularios/${formId}/photos`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+        formData.append('photo', {
+            uri: photo.uri,
+            type: photo.mimeType,
+            name: photo.fileName,
+        } as any);
+        formData.append('form_id', String(formId));
+        formData.append('user_id', String(userId));
+
+        const response = await api.post('photos/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
         });
+
         return response.data;
     } catch (error) {
-        console.error('Error uploading formulario photo:', error);
         throw error;
     }
 }
