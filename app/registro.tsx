@@ -16,6 +16,7 @@ import {
   createFormulario,
   createMeasurements,
   finalizarFormulario,
+  uploadFormularioPhoto,
 } from "@/database/formularios";
 import { getListaById } from "@/database/listasFormularios";
 import { getPlantTemplates } from "@/database/plantTemplates";
@@ -24,7 +25,9 @@ import { FieldBox } from "@/components/registro/FieldBox";
 import { SectionCard } from "@/components/registro/SectionCard";
 import { ChecklistItem } from "@/components/registro/ChecklistItem";
 import { PhotoUploadBox } from "@/components/registro/PhotoUploadBox";
+import type { SelectedPhoto } from "@/components/registro/PhotoUploadBox";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { extractApiError } from "@/lib/apiError";
 
 type Measurement = {
   template_id: string;
@@ -69,6 +72,7 @@ export default function RegistroScreen() {
   const [startedAt, setStartedAt] = useState("");
   const [endedAt, setEndedAt] = useState("");
   const [observations, setObservations] = useState("");
+  const [photo, setPhoto] = useState<SelectedPhoto | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [checklist, setChecklist] = useState<ChecklistEntry[]>([]);
   const [saving, setSaving] = useState(false);
@@ -147,6 +151,14 @@ export default function RegistroScreen() {
       });
       const formularioId = formulario?.id ?? formulario?.data?.id;
 
+      if (!formularioId) {
+        throw new Error("A API não retornou o ID do formulário criado.");
+      }
+
+      if (photo) {
+        await uploadFormularioPhoto(formularioId, photo);
+      }
+
       // 2) registra os itens de checklist marcados
       if (checkedTemplateIds.length > 0) {
         await createChecklistItems(formularioId, checkedTemplateIds);
@@ -168,11 +180,10 @@ export default function RegistroScreen() {
       await finalizarFormulario(formularioId);
 
       router.replace(`/registro-salvo/${formularioId}`);
-    } catch (error: any) {
-      console.log("Erro ao salvar registro:", error);
+    } catch (error: unknown) {
       Alert.alert(
         "Erro ao salvar",
-        "Não foi possível salvar o registro agora. Tente novamente."
+        extractApiError(error, "Não foi possível salvar o registro agora. Tente novamente.")
       );
     } finally {
       setSaving(false);
@@ -267,7 +278,10 @@ export default function RegistroScreen() {
         </SectionCard>
 
         <SectionCard title="Registro Fotográfico" icon="📷">
-          <PhotoUploadBox />
+          <PhotoUploadBox
+            photoBase64={photo?.base64}
+            onPhotoSelected={setPhoto}
+          />
         </SectionCard>
 
         <SectionCard title="Checklist de Manejo" icon="✅">
