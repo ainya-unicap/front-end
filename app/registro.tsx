@@ -7,6 +7,7 @@ import {
   Text,
   TextInput,
   View,
+  TouchableOpacity,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import useSWR from "swr";
@@ -47,10 +48,8 @@ function hoje() {
 }
 
 export default function RegistroScreen() {
-  // list_id vem da tela de lista de formulários do canteiro.
   const { list_id } = useLocalSearchParams<{ list_id?: string }>();
 
-  // Lista -> canteiro -> planta, para buscar os campos (templates) corretos.
   const { data: lista } = useSWR(list_id ? `lista-${list_id}` : null, () =>
     getListaById(list_id as string)
   );
@@ -67,17 +66,17 @@ export default function RegistroScreen() {
     () => getPlantTemplates(plantId)
   );
 
+  // Estados do Formulário
   const [date, setDate] = useState(hoje());
   const [week, setWeek] = useState("");
-  const [startedAt, setStartedAt] = useState("");
-  const [endedAt, setEndedAt] = useState("");
+  const [clima, setClima] = useState(""); // Novo campo
+  const [fasePlanta, setFasePlanta] = useState(""); // Novo campo
   const [observations, setObservations] = useState("");
   const [photo, setPhoto] = useState<SelectedPhoto | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [checklist, setChecklist] = useState<ChecklistEntry[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Monta os campos editáveis a partir dos templates da planta
   useEffect(() => {
     if (!templates) return;
     const list: any[] = Array.isArray(templates)
@@ -143,11 +142,14 @@ export default function RegistroScreen() {
     try {
       setSaving(true);
 
-      // 1) cria o formulário (registro semanal) na lista do canteiro
+      // Concatenando dados visuais extras nas observações
+      const observacoesFinais = `Clima: ${clima || 'Não informado'} | Fase: ${fasePlanta || 'Não informada'}\n\n${observations}`;
+
+      // 1) cria o formulário
       const formulario = await createFormulario({
         list_id,
         type: "SEMANAL",
-        observations,
+        observations: observacoesFinais,
       });
       const formularioId = formulario?.id ?? formulario?.data?.id;
 
@@ -155,16 +157,17 @@ export default function RegistroScreen() {
         throw new Error("A API não retornou o ID do formulário criado.");
       }
 
+      // Lógica de upload de foto
       if (photo) {
         await uploadFormularioPhoto(formularioId, photo);
       }
 
-      // 2) registra os itens de checklist marcados
+      // 2) registra os itens de checklist
       if (checkedTemplateIds.length > 0) {
         await createChecklistItems(formularioId, checkedTemplateIds);
       }
 
-      // 3) registra as medições preenchidas
+      // 3) registra as medições
       const medicoesPreenchidas = measurements.filter((m) => m.value !== "");
       if (medicoesPreenchidas.length > 0) {
         await createMeasurements(
@@ -210,31 +213,37 @@ export default function RegistroScreen() {
           </Text>
 
           <View className="rounded-full bg-amber-100 px-3 py-2">
-            <Text className="text-xs font-bold text-amber-600">⚡ Offline</Text>
+            <Text className="text-xs font-bold text-amber-600">Rascunho</Text>
           </View>
         </View>
 
-        <SectionCard title="Informações Gerais" icon="🧮">
-          <View className="flex-row flex-wrap justify-between">
+        {/* INFORMAÇÕES GERAIS */}
+        <SectionCard title="Informações Gerais" icon="📅">
+          <View className="flex-row flex-wrap justify-between mb-4">
             <FieldBox label="Data" value={date} onChangeText={setDate} />
+            <FieldBox label="Semana (opcional)" value={week} onChangeText={setWeek} />
+          </View>
 
-            <FieldBox label="Semana" value={week} onChangeText={setWeek} />
-
-            <FieldBox
-              label="Início"
-              value={startedAt}
-              onChangeText={setStartedAt}
-            />
-
-            <FieldBox
-              label="Término"
-              value={endedAt}
-              onChangeText={setEndedAt}
-            />
+          <Text className="mb-2 text-xs font-bold uppercase text-slate-400">Condições do Tempo</Text>
+          <View className="flex-row justify-between gap-2">
+            {['Sol ☀️', 'Nublado ☁️', 'Chuva 🌧️'].map((opcao) => (
+              <TouchableOpacity
+                key={opcao}
+                onPress={() => setClima(opcao)}
+                className={`flex-1 py-3 rounded-xl border items-center ${
+                  clima === opcao ? 'bg-emerald-700 border-emerald-700' : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <Text className={clima === opcao ? 'text-white font-bold' : 'text-slate-600'}>
+                  {opcao}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </SectionCard>
 
-        <SectionCard title="Medições" icon="📏">
+        {/* ESTADO DA PLANTA (Antigo Medições) */}
+        <SectionCard title="Estado da Planta" icon="🌱">
           {loadingTemplates ? (
             <View className="flex-row flex-wrap justify-between gap-y-3">
               {[0, 1].map((i) => (
@@ -242,9 +251,9 @@ export default function RegistroScreen() {
               ))}
             </View>
           ) : (
-            <View className="flex-row flex-wrap justify-between">
+            <View className="flex-row flex-wrap justify-between mb-4">
               {measurements.length === 0 ? (
-                <Text className="text-sm text-slate-400">
+                <Text className="text-sm text-slate-400 mb-4">
                   Nenhum campo de medição configurado para esta planta.
                 </Text>
               ) : (
@@ -262,21 +271,25 @@ export default function RegistroScreen() {
             </View>
           )}
 
-          <Text className="mb-2 mt-2 text-xs font-bold uppercase text-slate-400">
-            Observações
-          </Text>
-
-          <TextInput
-            value={observations}
-            onChangeText={setObservations}
-            placeholder="Descreva o estado da planta..."
-            multiline
-            textAlignVertical="top"
-            className="min-h-28 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
-            placeholderTextColor="#94a3b8"
-          />
+          <Text className="mb-2 text-xs font-bold uppercase text-slate-400">Fase da planta (opcional)</Text>
+          <View className="flex-row justify-between gap-2">
+            {['Vegetativo 🌱', 'Elongação 🌿', 'Florescimento 🌷'].map((fase) => (
+              <TouchableOpacity
+                key={fase}
+                onPress={() => setFasePlanta(fase)}
+                className={`flex-1 py-3 rounded-xl border items-center px-1 ${
+                  fasePlanta === fase ? 'bg-emerald-700 border-emerald-700' : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <Text className={`text-center text-xs ${fasePlanta === fase ? 'text-white font-bold' : 'text-slate-600'}`}>
+                  {fase}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </SectionCard>
 
+        {/* FOTOS */}
         <SectionCard title="Registro Fotográfico" icon="📷">
           <PhotoUploadBox
             photoBase64={photo?.base64}
@@ -284,6 +297,7 @@ export default function RegistroScreen() {
           />
         </SectionCard>
 
+        {/* CHECKLIST */}
         <SectionCard title="Checklist de Manejo" icon="✅">
           {loadingTemplates ? (
             <View className="gap-3">
@@ -307,10 +321,24 @@ export default function RegistroScreen() {
           )}
         </SectionCard>
 
+        {/* OBSERVAÇÕES */}
+        <SectionCard title="Observações Gerais" icon="📝">
+          <TextInput
+            value={observations}
+            onChangeText={setObservations}
+            placeholder="Ex: Descreva como a planta está se desenvolvendo, sinais de pragas, estado do solo..."
+            multiline
+            textAlignVertical="top"
+            className="min-h-28 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
+            placeholderTextColor="#94a3b8"
+          />
+        </SectionCard>
+
+        {/* BOTÃO SALVAR */}
         <Pressable
           onPress={handleSave}
           disabled={saving}
-          className="mt-2 h-14 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
+          className="mt-2 mb-8 h-14 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
         >
           {saving ? (
             <ActivityIndicator color="#ffffff" />
