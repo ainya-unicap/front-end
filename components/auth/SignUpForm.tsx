@@ -248,6 +248,7 @@ export function SignUpForm() {
         baseUrl={RECAPTCHA_BASE_URL}
         size="normal" // use "invisible" se sua chave for invisível
         onVerify={handleVerify}
+        action="cadastro"
         onExpire={() =>
           Alert.alert("Captcha expirado", "Tente cadastrar novamente.")
         }

@@ -145,6 +145,7 @@ export function LoginForm() {
         ref={recaptchaRef}
         siteKey={RECAPTCHA_SITE_KEY}
         baseUrl={RECAPTCHA_BASE_URL}
+        action="login"
         size="normal" // use "invisible" se sua chave for invisível
         onVerify={handleVerify}
         onExpire={() =>
