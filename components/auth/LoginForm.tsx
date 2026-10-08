@@ -1,7 +1,8 @@
 import { Link, useRouter } from "expo-router";
 import { CheckCircle2, Lock, AtSign } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
+import Recaptcha, { RecaptchaRef } from "react-native-recaptcha-that-works";
 
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
@@ -9,8 +10,12 @@ import { login } from "@/database/auth";
 import { normalizeEmail, validateEmail } from "@/lib/email";
 import { PERFIL_LABEL, PerfilAcademico } from "@/lib/perfil";
 
+const RECAPTCHA_SITE_KEY = "6LeMKeQtAAAAAB-ZrXXa3hHf814yzTXwdDO1_gaS";
+const RECAPTCHA_BASE_URL = "http://localhost"; // o mesmo domínio cadastrado no console
+
 export function LoginForm() {
   const router = useRouter();
+  const recaptchaRef = useRef<RecaptchaRef>(null);
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -18,10 +23,7 @@ export function LoginForm() {
   const [submitting, setSubmitting] = useState(false);
   const [perfil, setPerfil] = useState<PerfilAcademico | null>(null);
 
-  const emailCheck = useMemo(
-    () => validateEmail(email),
-    [email]
-  );
+  const emailCheck = useMemo(() => validateEmail(email), [email]);
 
   const senhaError = submitted && !senha ? "Informe sua senha." : undefined;
   const emailError =
@@ -32,14 +34,27 @@ export function LoginForm() {
     setPerfil(null);
   }
 
-  async function handleSubmit() {
+  // 1) Valida o formulário e abre o captcha
+  function handleSubmit() {
     setSubmitted(true);
 
     if (!emailCheck.valid || !senha) return;
+    if (submitting) return;
+
+    recaptchaRef.current?.open();
+  }
+
+  // 2) Captcha resolvido: faz o login com o token
+  async function handleVerify(recaptchaToken: string) {
+    if (!emailCheck.valid) return;
 
     setSubmitting(true);
 
-    const result = await login({ email: emailCheck.value, senha });
+    const result = await login({
+      email: emailCheck.value,
+      senha,
+      recaptchaToken,
+    });
 
     setSubmitting(false);
 
@@ -68,9 +83,7 @@ export function LoginForm() {
         autoCorrect={false}
         returnKeyType="next"
         textContentType="username"
-        icon={
-          <AtSign size={20} color={emailError ? "#ef4444" : "#64748b"} />
-        }
+        icon={<AtSign size={20} color={emailError ? "#ef4444" : "#64748b"} />}
         tone={emailError ? "error" : perfil ? "success" : "neutral"}
         trailing={
           perfil ? (
@@ -127,6 +140,20 @@ export function LoginForm() {
           <Text className="font-bold text-emerald-800">Cadastrar</Text>
         </Link>
       </Text>
+
+      <Recaptcha
+        ref={recaptchaRef}
+        siteKey={RECAPTCHA_SITE_KEY}
+        baseUrl={RECAPTCHA_BASE_URL}
+        size="normal" // use "invisible" se sua chave for invisível
+        onVerify={handleVerify}
+        onExpire={() =>
+          Alert.alert("Captcha expirado", "Tente entrar novamente.")
+        }
+        onError={() =>
+          Alert.alert("Erro", "Não foi possível carregar o captcha.")
+        }
+      />
     </View>
   );
 }
