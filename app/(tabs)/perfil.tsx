@@ -1,4 +1,6 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { useState } from "react";
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import useSWR from "swr";
 
@@ -6,11 +8,12 @@ import { ProfileHeader } from "@/components/perfil/ProfileHeader";
 import { ProfileSection } from "@/components/perfil/ProfileSection";
 import { ProfileRow } from "@/components/perfil/ProfileRow";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { getProfile } from "@/database/user";
+import { getProfile, uploadProfileAvatar } from "@/database/user";
 import { logout } from "@/database/auth";
 
 export default function PerfilScreen() {
-  const { data: perfilResp, isLoading } = useSWR("perfil", () => getProfile());
+  const { data: perfilResp, isLoading, mutate } = useSWR("perfil", () => getProfile());
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   // A API pode devolver o objeto direto ou embrulhado em { data: {...} }
   const perfil = (perfilResp as any)?.data ?? perfilResp;
 
@@ -18,6 +21,52 @@ export default function PerfilScreen() {
     // Encerra a sessão no back-end e limpa os tokens locais antes de redirecionar.
     await logout();
     router.replace("/login");
+  }
+
+  async function handleChangeAvatar() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "Permissão necessária",
+        "Permita o acesso à galeria para escolher uma foto de perfil."
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    const photo = result.assets?.[0];
+    if (result.canceled || !photo) return;
+
+    const mimeType = photo.mimeType ?? "image/jpeg";
+    if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType)) {
+      Alert.alert("Formato não aceito", "Escolha uma imagem JPEG, PNG ou WEBP.");
+      return;
+    }
+    if (photo.fileSize && photo.fileSize > 5 * 1024 * 1024) {
+      Alert.alert("Imagem muito grande", "A foto deve ter no máximo 5 MB.");
+      return;
+    }
+
+    const extension = mimeType.split("/")[1] === "jpeg" ? "jpg" : mimeType.split("/")[1];
+    try {
+      setIsUploadingAvatar(true);
+      await uploadProfileAvatar({
+        uri: photo.uri,
+        mimeType,
+        fileName: photo.fileName ?? `avatar.${extension}`,
+      });
+      await mutate(() => getProfile());
+      Alert.alert("Foto atualizada", "Sua foto de perfil foi alterada.");
+    } catch {
+      Alert.alert("Não foi possível atualizar", "Tente enviar a foto novamente.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   }
 
   if (isLoading) {
@@ -56,7 +105,13 @@ export default function PerfilScreen() {
         contentContainerClassName="pb-32"
         showsVerticalScrollIndicator={false}
       >
-        <ProfileHeader name={perfil?.name} email={perfil?.email} />
+        <ProfileHeader
+          name={perfil?.name ?? "Usuário"}
+          email={perfil?.email ?? ""}
+          avatarUri={perfil?.avatar_url ?? perfil?.avatarUrl ?? perfil?.avatar}
+          isUploadingAvatar={isUploadingAvatar}
+          onChangeAvatar={handleChangeAvatar}
+        />
 
         <View className="px-5 pt-5">
           <ProfileSection title="Perfil">
