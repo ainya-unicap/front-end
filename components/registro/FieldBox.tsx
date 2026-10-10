@@ -26,18 +26,23 @@ export function FieldBox({ label, value, onChangeText, placeholder }: FieldBoxPr
 
   return (
     <View className="mb-4 w-[48%]">
-      <Text className="mb-2 text-xs font-bold uppercase text-slate-400">
+      <Text className="mb-2 text-sm font-bold uppercase text-slate-600">
         {label}
       </Text>
 
-      <TextInput
-        value={value}
-        onChangeText={handleChangeText}
-        placeholder={placeholder ?? (isDateField ? "dd/mm/aaaa" : undefined)}
-        className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
-        placeholderTextColor="#94a3b8"
-        keyboardType="numeric"
-      />
+      {/* View externa que controla a caixa, a borda e força o alinhamento vertical */}
+      <View className="h-[52px] justify-center rounded-xl border border-slate-300 bg-white px-4">
+        <TextInput
+          value={value}
+          onChangeText={handleChangeText}
+          placeholder={placeholder ?? (isDateField ? "dd/mm/aaaa" : undefined)}
+          // TextInput totalmente limpo de margens para não empurrar o texto
+          className="text-lg font-medium text-slate-800 p-0 m-0 leading-tight"
+          placeholderTextColor="#94a3b8"
+          keyboardType="numeric"
+          style={{ paddingVertical: 0, marginVertical: 0 }}
+        />
+      </View>
     </View>
   );
 }
