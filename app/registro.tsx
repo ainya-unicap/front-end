@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -11,6 +10,7 @@ import {
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import useSWR from "swr";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import {
   createChecklistItems,
@@ -27,21 +27,7 @@ import { SectionCard } from "@/components/registro/SectionCard";
 import { ChecklistItem } from "@/components/registro/ChecklistItem";
 import { PhotoUploadBox } from "@/components/registro/PhotoUploadBox";
 import type { SelectedPhoto } from "@/components/registro/PhotoUploadBox";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { extractApiError } from "@/lib/apiError";
-
-type Measurement = {
-  template_id: string;
-  field_name: string;
-  unit: string;
-  value: string;
-};
-
-type ChecklistEntry = {
-  template_id: string;
-  label: string;
-  checked: boolean;
-};
 
 function hoje() {
   return new Date().toLocaleDateString("pt-BR");
@@ -61,91 +47,78 @@ export default function RegistroScreen() {
     listaObj?.plant_id ??
     listaObj?.plant?.id;
 
-  const { data: templates, isLoading: loadingTemplates } = useSWR(
+  const { data: templates } = useSWR(
     plantId ? `plant-templates-${plantId}` : null,
     () => getPlantTemplates(plantId)
   );
 
-  // Estados do Formulário
+  // Estados Visuais do Formulário
   const [date, setDate] = useState(hoje());
   const [week, setWeek] = useState("");
-  const [clima, setClima] = useState(""); // Novo campo
-  const [fasePlanta, setFasePlanta] = useState(""); // Novo campo
+  const [clima, setClima] = useState("");
+  const [fasePlanta, setFasePlanta] = useState("");
+  const [alturaEstimada, setAlturaEstimada] = useState("");
   const [observations, setObservations] = useState("");
   const [photo, setPhoto] = useState<SelectedPhoto | null>(null);
-  const [measurements, setMeasurements] = useState<Measurement[]>([]);
-  const [checklist, setChecklist] = useState<ChecklistEntry[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Checklist Fixo do MVP
+  const [checklistFixo, setChecklistFixo] = useState([
+    { id: "irrigacao", label: "Irrigação realizada", checked: false },
+    { id: "limpeza", label: "Limpeza / Capina", checked: false },
+    { id: "adubacao", label: "Adubação de cobertura", checked: false },
+    { id: "plantio", label: "Plantio / Replantio", checked: false },
+    { id: "pragas", label: "Controle de pragas", checked: false },
+  ]);
+
+  // Estados de Mapeamento para o Banco de Dados (Fallback)
+  const [alturaTplId, setAlturaTplId] = useState("");
+  const [checklistTplIds, setChecklistTplIds] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!templates) return;
-    const list: any[] = Array.isArray(templates)
-      ? templates
-      : (templates?.data ?? []);
+    const list: any[] = Array.isArray(templates) ? templates : (templates?.data ?? []);
 
-    setMeasurements(
-      list
-        .filter((t) => (t.type ?? "MEASUREMENT") !== "CHECKLIST")
-        .map((t) => ({
-          template_id: String(t.id),
-          field_name: t.field_name ?? "Campo",
-          unit: t.unit ?? "",
-          value: "",
-        }))
-    );
+    const alturaTpl = list.find((t) => t.field_name?.toLowerCase().includes("altura"));
+    if (alturaTpl) setAlturaTplId(String(alturaTpl.id));
 
-    setChecklist(
-      list
-        .filter((t) => t.type === "CHECKLIST")
-        .map((t) => ({
-          template_id: String(t.id),
-          label: t.field_name ?? "Item",
-          checked: false,
-        }))
-    );
+    const mapping: Record<string, string> = {};
+    list.forEach((t) => {
+      if (t.type === "CHECKLIST" && t.field_name) {
+        const name = t.field_name.toLowerCase();
+        if (name.includes("irriga")) mapping["irrigacao"] = String(t.id);
+        if (name.includes("limpeza") || name.includes("capina")) mapping["limpeza"] = String(t.id);
+        if (name.includes("aduba")) mapping["adubacao"] = String(t.id);
+        if (name.includes("plantio") || name.includes("replantio")) mapping["plantio"] = String(t.id);
+        if (name.includes("praga")) mapping["pragas"] = String(t.id);
+      }
+    });
+    setChecklistTplIds(mapping);
   }, [templates]);
 
-  const checkedTemplateIds = useMemo(
-    () => checklist.filter((item) => item.checked).map((item) => item.template_id),
-    [checklist]
-  );
-
-  function updateMeasurement(templateId: string, value: string) {
-    setMeasurements((current) =>
-      current.map((measurement) =>
-        measurement.template_id === templateId
-          ? { ...measurement, value }
-          : measurement
-      )
-    );
-  }
-
-  function toggleChecklistItem(templateId: string) {
-    setChecklist((current) =>
-      current.map((item) =>
-        item.template_id === templateId
-          ? { ...item, checked: !item.checked }
-          : item
-      )
+  function toggleChecklistFixo(id: string) {
+    setChecklistFixo((current) =>
+      current.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item))
     );
   }
 
   async function handleSave() {
     if (!list_id) {
-      Alert.alert(
-        "Lista não encontrada",
-        "Abra o registro a partir de um canteiro para vincular a lista de formulários."
-      );
+      Alert.alert("Lista não encontrada", "Abra o registro a partir de um canteiro.");
       return;
     }
 
     try {
       setSaving(true);
 
-      // Concatenando dados visuais extras nas observações
-      const observacoesFinais = `Clima: ${clima || 'Não informado'} | Fase: ${fasePlanta || 'Não informada'}\n\n${observations}`;
+      const itensChecados = checklistFixo.filter((i) => i.checked);
+      const nomesChecklist = itensChecados.map((i) => i.label).join(", ");
+      
+      const observacoesFinais = `Clima: ${clima || "-"} | Fase: ${fasePlanta || "-"} | Altura: ${alturaEstimada ? alturaEstimada + " cm" : "-"}
+Checklist: ${nomesChecklist || "Nenhum"}
 
-      // 1) cria o formulário
+Observações: ${observations}`;
+
       const formulario = await createFormulario({
         list_id,
         type: "SEMANAL",
@@ -153,35 +126,24 @@ export default function RegistroScreen() {
       });
       const formularioId = formulario?.id ?? formulario?.data?.id;
 
-      if (!formularioId) {
-        throw new Error("A API não retornou o ID do formulário criado.");
-      }
+      if (!formularioId) throw new Error("A API não retornou o ID do formulário criado.");
 
-      // Lógica de upload de foto
       if (photo) {
         await uploadFormularioPhoto(formularioId, photo);
       }
 
-      // 2) registra os itens de checklist
-      if (checkedTemplateIds.length > 0) {
-        await createChecklistItems(formularioId, checkedTemplateIds);
+      const validTemplateIds = itensChecados.map((i) => checklistTplIds[i.id]).filter(Boolean);
+      if (validTemplateIds.length > 0) {
+        await createChecklistItems(formularioId, validTemplateIds);
       }
 
-      // 3) registra as medições
-      const medicoesPreenchidas = measurements.filter((m) => m.value !== "");
-      if (medicoesPreenchidas.length > 0) {
-        await createMeasurements(
-          formularioId,
-          medicoesPreenchidas.map((measurement) => ({
-            template_id: measurement.template_id,
-            value: Number(measurement.value || 0),
-          }))
-        );
+      if (alturaEstimada && alturaTplId) {
+        await createMeasurements(formularioId, [
+          { template_id: alturaTplId, value: Number(alturaEstimada) },
+        ]);
       }
 
-      // 4) finaliza o formulário
       await finalizarFormulario(formularioId);
-
       router.replace(`/registro-salvo/${formularioId}`);
     } catch (error: unknown) {
       Alert.alert(
@@ -195,94 +157,77 @@ export default function RegistroScreen() {
 
   return (
     <View className="flex-1 bg-slate-50">
-      <ScrollView
+      <KeyboardAwareScrollView
         className="flex-1"
         contentContainerClassName="px-5 pb-10 pt-14"
         showsVerticalScrollIndicator={false}
+        bottomOffset={40}
       >
         <View className="mb-6 flex-row items-center justify-between">
-          <Pressable
-            onPress={() => router.back()}
-            className="h-11 w-11 items-center justify-center rounded-full bg-slate-100"
-          >
+          <Pressable onPress={() => router.back()} className="h-11 w-11 items-center justify-center rounded-full bg-slate-100">
             <Text className="text-2xl text-slate-500">‹</Text>
           </Pressable>
-
-          <Text className="flex-1 px-4 text-2xl font-bold text-slate-950">
-            Novo Registro
-          </Text>
-
+          <Text className="flex-1 px-4 text-2xl font-bold text-slate-950">Novo Registro</Text>
           <View className="rounded-full bg-amber-100 px-3 py-2">
             <Text className="text-xs font-bold text-amber-600">Rascunho</Text>
           </View>
         </View>
 
         {/* INFORMAÇÕES GERAIS */}
-        <SectionCard title="Informações Gerais" icon="📅">
+        <SectionCard title="Informações Gerais" icon="">
           <View className="flex-row flex-wrap justify-between mb-4">
             <FieldBox label="Data" value={date} onChangeText={setDate} />
             <FieldBox label="Semana (opcional)" value={week} onChangeText={setWeek} />
           </View>
-
-          <Text className="mb-2 text-xs font-bold uppercase text-slate-400">Condições do Tempo</Text>
+          <Text className="mb-2 text-sm font-bold uppercase text-slate-600">Condições do Tempo</Text>
           <View className="flex-row justify-between gap-2">
-            {['Sol ☀️', 'Nublado ☁️', 'Chuva 🌧️'].map((opcao) => (
+            {["Sol ☀️", "Nublado ☁️", "Chuva 🌧️"].map((opcao) => (
               <TouchableOpacity
                 key={opcao}
                 onPress={() => setClima(opcao)}
                 className={`flex-1 py-3 rounded-xl border items-center ${
-                  clima === opcao ? 'bg-emerald-700 border-emerald-700' : 'bg-slate-50 border-slate-200'
+                  clima === opcao ? "bg-emerald-700 border-emerald-700" : "bg-slate-50 border-slate-300"
                 }`}
               >
-                <Text className={clima === opcao ? 'text-white font-bold' : 'text-slate-600'}>
-                  {opcao}
-                </Text>
+                <Text className={`text-base ${clima === opcao ? "text-white font-bold" : "text-slate-700 font-medium"}`}>{opcao}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </SectionCard>
 
-        {/* ESTADO DA PLANTA (Antigo Medições) */}
+        {/* ESTADO DA PLANTA (Apenas Altura) */}
         <SectionCard title="Estado da Planta" icon="🌱">
-          {loadingTemplates ? (
-            <View className="flex-row flex-wrap justify-between gap-y-3">
-              {[0, 1].map((i) => (
-                <Skeleton key={i} width="48%" height={64} radius={12} />
-              ))}
-            </View>
-          ) : (
-            <View className="flex-row flex-wrap justify-between mb-4">
-              {measurements.length === 0 ? (
-                <Text className="text-sm text-slate-400 mb-4">
-                  Nenhum campo de medição configurado para esta planta.
-                </Text>
-              ) : (
-                measurements.map((measurement) => (
-                  <FieldBox
-                    key={measurement.template_id}
-                    label={`${measurement.field_name} (${measurement.unit})`}
-                    value={measurement.value}
-                    onChangeText={(value) =>
-                      updateMeasurement(measurement.template_id, value)
-                    }
-                  />
-                ))
-              )}
-            </View>
-          )}
-
-          <Text className="mb-2 text-xs font-bold uppercase text-slate-400">Fase da planta (opcional)</Text>
+          <View className="mb-4">
+            <FieldBox
+              label="Altura estimada (cm) (opcional)"
+              value={alturaEstimada}
+              onChangeText={setAlturaEstimada}
+            />
+          </View>
+          <Text className="mb-2 text-sm font-bold uppercase text-slate-600">Fase da planta (opcional)</Text>
           <View className="flex-row justify-between gap-2">
-            {['Vegetativo 🌱', 'Elongação 🌿', 'Florescimento 🌷'].map((fase) => (
+            {[
+              { id: 'Vegetativo 🌱', texto: 'Vegetativo', emoji: '🌱' },
+              { id: 'Elongação 🌿', texto: 'Elongação', emoji: '🌿' },
+              { id: 'Florescimento 🌷', texto: 'Florescimento', emoji: '🌷' }
+            ].map((fase) => (
               <TouchableOpacity
-                key={fase}
-                onPress={() => setFasePlanta(fase)}
-                className={`flex-1 py-3 rounded-xl border items-center px-1 ${
-                  fasePlanta === fase ? 'bg-emerald-700 border-emerald-700' : 'bg-slate-50 border-slate-200'
+                key={fase.id}
+                onPress={() => setFasePlanta(fase.id)}
+                className={`flex-1 py-3 rounded-xl border items-center justify-center px-1 ${
+                  fasePlanta === fase.id ? "bg-emerald-700 border-emerald-700" : "bg-slate-50 border-slate-300"
                 }`}
               >
-                <Text className={`text-center text-xs ${fasePlanta === fase ? 'text-white font-bold' : 'text-slate-600'}`}>
-                  {fase}
+                {/* Aqui adicionamos as propriedades para não quebrar a linha */}
+                <Text 
+                  numberOfLines={1} 
+                  adjustsFontSizeToFit 
+                  className={`text-center text-base w-full ${fasePlanta === fase.id ? "text-white font-bold" : "text-slate-700 font-medium"}`}
+                >
+                  {fase.texto}
+                </Text>
+                <Text className="text-center text-base mt-1">
+                  {fase.emoji}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -291,34 +236,19 @@ export default function RegistroScreen() {
 
         {/* FOTOS */}
         <SectionCard title="Registro Fotográfico" icon="📷">
-          <PhotoUploadBox
-            photoBase64={photo?.base64}
-            onPhotoSelected={setPhoto}
-          />
+          <PhotoUploadBox photoBase64={photo?.base64} onPhotoSelected={setPhoto} />
         </SectionCard>
 
-        {/* CHECKLIST */}
+        {/* CHECKLIST FIXO MVP */}
         <SectionCard title="Checklist de Manejo" icon="✅">
-          {loadingTemplates ? (
-            <View className="gap-3">
-              {[0, 1, 2].map((i) => (
-                <Skeleton key={i} width="100%" height={40} radius={10} />
-              ))}
-            </View>
-          ) : checklist.length === 0 ? (
-            <Text className="text-sm text-slate-400">
-              Nenhum item de checklist configurado para esta planta.
-            </Text>
-          ) : (
-            checklist.map((item) => (
-              <ChecklistItem
-                key={item.template_id}
-                label={item.label}
-                checked={item.checked}
-                onPress={() => toggleChecklistItem(item.template_id)}
-              />
-            ))
-          )}
+          {checklistFixo.map((item) => (
+            <ChecklistItem
+              key={item.id}
+              label={item.label}
+              checked={item.checked}
+              onPress={() => toggleChecklistFixo(item.id)}
+            />
+          ))}
         </SectionCard>
 
         {/* OBSERVAÇÕES */}
@@ -326,10 +256,10 @@ export default function RegistroScreen() {
           <TextInput
             value={observations}
             onChangeText={setObservations}
-            placeholder="Ex: Descreva como a planta está se desenvolvendo, sinais de pragas, estado do solo..."
+            placeholder="Ex: Descreva como a planta está se desenvolvendo..."
             multiline
             textAlignVertical="top"
-            className="min-h-28 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
+            className="min-h-32 rounded-xl border border-slate-300 bg-white px-4 py-4 text-lg text-slate-800"
             placeholderTextColor="#94a3b8"
           />
         </SectionCard>
@@ -340,15 +270,9 @@ export default function RegistroScreen() {
           disabled={saving}
           className="mt-2 mb-8 h-14 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
         >
-          {saving ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text className="text-base font-bold text-white">
-              Salvar registro
-            </Text>
-          )}
+          {saving ? <ActivityIndicator color="#ffffff" /> : <Text className="text-base font-bold text-white">Salvar registro</Text>}
         </Pressable>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }
