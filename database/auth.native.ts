@@ -77,6 +77,7 @@ export type CadastroInput = {
     email: string;
     instituicao: string;
     senha: string;
+    recaptchaToken: string;
 };
 
 export type CadastroResult =
@@ -94,6 +95,7 @@ export async function cadastro({
     email,
     instituicao,
     senha,
+    recaptchaToken
 }: CadastroInput): Promise<CadastroResult> {
     try {
         const response = await api.post('users', {
@@ -103,6 +105,7 @@ export async function cadastro({
             email,
             instituicao,
             password: senha,
+            recaptchaToken
         });
 
         return { ok: true, perfil: parsePerfil(response.data?.role) };
@@ -121,6 +124,7 @@ export async function cadastro({
 export type LoginInput = {
     email: string;
     senha: string;
+    recaptchaToken: string;
 };
 
 export type LoginResult =
@@ -131,9 +135,9 @@ export type LoginResult =
  * Autentica pela matrícula. O perfil (aluno ou professor) é definido pelo
  * backend e apenas lido aqui — o cliente não deduz o vínculo acadêmico.
  */
-export async function login({ email, senha }: LoginInput): Promise<LoginResult> {
+export async function login({ email, senha, recaptchaToken }: LoginInput): Promise<LoginResult> {
     try {
-        const response = await api.post('users/login', { email, password: senha });
+        const response = await api.post('users/login', { email, password: senha, recaptchaToken });
         const { accessToken, refreshToken, id, role } = response.data ?? {};
 
         if (accessToken) saveAccessToken(accessToken);

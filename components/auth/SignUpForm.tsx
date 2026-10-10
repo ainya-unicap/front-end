@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
 import { CheckCircle2, IdCard, Lock, Mail, User } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert, View } from "react-native";
+import Recaptcha, { RecaptchaRef } from "react-native-recaptcha-that-works";
 import useSWR from "swr";
 
 import {
@@ -19,6 +20,9 @@ import { PerfilAcademico } from "@/lib/perfil";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 6;
 
+const RECAPTCHA_SITE_KEY = "SUA_SITE_KEY";
+const RECAPTCHA_BASE_URL = "http://localhost"; // o mesmo domínio cadastrado no console
+
 type FormErrors = Partial<
   Record<
     "name" | "matricula" | "email" | "instituicao" | "senha" | "confirmacao",
@@ -28,6 +32,7 @@ type FormErrors = Partial<
 
 export function SignUpForm() {
   const router = useRouter();
+  const recaptchaRef = useRef<RecaptchaRef>(null);
 
   const [role, setRole] = useState<PerfilAcademico>("aluno");
   const [name, setName] = useState("");
@@ -84,7 +89,8 @@ export function SignUpForm() {
     confirmacao,
   ]);
 
-  async function handleSubmit() {
+  // 1) Valida o formulário e abre o captcha
+  function handleSubmit() {
     setSubmitted(true);
 
     const invalid =
@@ -96,6 +102,14 @@ export function SignUpForm() {
       senha !== confirmacao;
 
     if (invalid) return;
+    if (submitting) return;
+
+    recaptchaRef.current?.open();
+  }
+
+  // 2) Captcha resolvido: faz o cadastro com o token
+  async function handleVerify(recaptchaToken: string) {
+    if (!instituicao || !matriculaCheck.valid) return;
 
     setSubmitting(true);
 
@@ -106,6 +120,7 @@ export function SignUpForm() {
       email: email.trim(),
       instituicao,
       senha,
+      recaptchaToken,
     });
 
     setSubmitting(false);
@@ -226,6 +241,21 @@ export function SignUpForm() {
       <View className="mt-2">
         <Button label="Cadastrar" onPress={handleSubmit} loading={submitting} />
       </View>
+
+      <Recaptcha
+        ref={recaptchaRef}
+        siteKey={RECAPTCHA_SITE_KEY}
+        baseUrl={RECAPTCHA_BASE_URL}
+        size="normal" // use "invisible" se sua chave for invisível
+        onVerify={handleVerify}
+        action="cadastro"
+        onExpire={() =>
+          Alert.alert("Captcha expirado", "Tente cadastrar novamente.")
+        }
+        onError={() =>
+          Alert.alert("Erro", "Não foi possível carregar o captcha.")
+        }
+      />
     </View>
   );
 }
