@@ -9,7 +9,7 @@ export default function LoginScreen() {
     <View className="flex-1 bg-[#124B33]">
       <StatusBar style="light" />
 
-      <View className="flex-1 items-center justify-center pb-72 px-8">
+      <View className="flex-1 items-center justify-center pb-96 px-8">
         
         <Image
           source={require("@/assets/images/logo-splash.png")} 
