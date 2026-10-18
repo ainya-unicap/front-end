@@ -1,31 +1,28 @@
 import { StatusBar } from "expo-status-bar";
-import { Sprout } from "lucide-react-native";
-import { Text, View } from "react-native";
+import { Text, View, Image } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export default function LoginScreen() {
   return (
-    <View className="flex-1 bg-emerald-950">
+    <View className="flex-1 bg-[#124B33]">
       <StatusBar style="light" />
 
-      {/* Fundo */}
-      <View className="flex-1 items-center justify-center px-8">
-        <View className="h-[68px] w-[68px] items-center justify-center rounded-3xl bg-white/10">
-          <Sprout size={32} color="#7fdcae" />
-        </View>
+      <View className="flex-1 items-center justify-center pb-96 px-8">
+        
+        <Image
+          source={require("@/assets/images/logo-splash.png")} 
+          className="h-64 w-64" 
+          resizeMode="contain"
+        />
 
-        <Text className="mt-4 text-center text-3xl font-extrabold tracking-tight text-white">
-          Forrage App
+        <Text className="-mt-12 text-center text-4xl font-extrabold tracking-tight text-white">
+          Forrageia
         </Text>
 
-        <Text className="mt-1 text-center text-sm text-emerald-200">
-          Acompanhamento de plantas forrageiras
-        </Text>
       </View>
 
-      {/* Camada do login */}
       <View
         className="absolute inset-0"
         pointerEvents="box-none"

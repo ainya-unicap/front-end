@@ -11,7 +11,7 @@ import { normalizeEmail, validateEmail } from "@/lib/email";
 import { PERFIL_LABEL, PerfilAcademico } from "@/lib/perfil";
 
 const RECAPTCHA_SITE_KEY = "6LeMKeQtAAAAAB-ZrXXa3hHf814yzTXwdDO1_gaS";
-const RECAPTCHA_BASE_URL = "http://localhost"; // o mesmo domínio cadastrado no console
+const RECAPTCHA_BASE_URL = "http://localhost"; 
 
 export function LoginForm() {
   const router = useRouter();
@@ -34,20 +34,15 @@ export function LoginForm() {
     setPerfil(null);
   }
 
-  // 1) Valida o formulário e abre o captcha
   function handleSubmit() {
     setSubmitted(true);
-
     if (!emailCheck.valid || !senha) return;
     if (submitting) return;
-
     recaptchaRef.current?.open();
   }
 
-  // 2) Captcha resolvido: faz o login com o token
   async function handleVerify(recaptchaToken: string) {
     if (!emailCheck.valid) return;
-
     setSubmitting(true);
 
     const result = await login({
@@ -68,7 +63,7 @@ export function LoginForm() {
   }
 
   return (
-    <View className="w-full rounded-t-[28px] bg-white px-6 pb-8 pt-7">
+    <View className="w-full rounded-t-[28px] bg-white px-6 pb-16 pt-7">
       <Text className="mb-6 text-2xl font-extrabold tracking-tight text-slate-900">
         Entrar
       </Text>
@@ -127,17 +122,18 @@ export function LoginForm() {
         }
         className="mb-5 self-end active:opacity-60"
       >
-        <Text className="text-sm font-bold text-emerald-800">
+
+        <Text className="text-base font-bold text-[#124B33]">
           Esqueci minha senha
         </Text>
       </Pressable>
 
       <Button label="Entrar" onPress={handleSubmit} loading={submitting} />
 
-      <Text className="mt-5 text-center text-sm text-slate-500">
+      <Text className="mt-5 text-center text-base text-slate-700">
         Ainda não possui uma conta?{" "}
         <Link href="/cadastro" asChild>
-          <Text className="font-bold text-emerald-800">Cadastrar</Text>
+          <Text className="font-extrabold text-[#124B33]">Cadastrar</Text>
         </Link>
       </Text>
 
@@ -146,7 +142,7 @@ export function LoginForm() {
         siteKey={RECAPTCHA_SITE_KEY}
         baseUrl={RECAPTCHA_BASE_URL}
         action="login"
-        size="normal" // use "invisible" se sua chave for invisível
+        size="normal"
         onVerify={handleVerify}
         onExpire={() =>
           Alert.alert("Captcha expirado", "Tente entrar novamente.")

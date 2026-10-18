@@ -8,15 +8,11 @@ export type FieldTone = "neutral" | "success" | "error";
 
 export type TextFieldProps = Omit<TextInputProps, "className"> & {
   label: string;
-  /** Ícone exibido à esquerda do campo. */
   icon?: ReactNode;
-  /** Conteúdo fixo à direita (ex.: badge de perfil). */
   trailing?: ReactNode;
-  /** Mensagem de apoio abaixo do campo. */
   helper?: string;
   helperIcon?: ReactNode;
   tone?: FieldTone;
-  /** Exibe o botão de mostrar/ocultar senha. */
   secureToggle?: boolean;
 };
 
@@ -67,7 +63,8 @@ export function TextField({
 
   return (
     <View className="mb-4">
-      <Text className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+
+      <Text className="mb-2 text-xs font-extrabold uppercase tracking-wider text-slate-800">
         {label}
       </Text>
 

@@ -14,13 +14,13 @@ export type ButtonProps = {
 };
 
 const CONTAINER: Record<ButtonVariant, string> = {
-  primary: "bg-emerald-800",
+  primary: "bg-[#124B33]",
   ghost: "border border-emerald-200 bg-white",
 };
 
 const LABEL: Record<ButtonVariant, string> = {
   primary: "text-white",
-  ghost: "text-emerald-800",
+  ghost: "text-[#124B33]", 
 };
 
 export function Button({
@@ -47,12 +47,12 @@ export function Button({
       } ${inactive ? "opacity-50" : ""}`}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "primary" ? "#ffffff" : "#065f46"} />
+        <ActivityIndicator color={variant === "primary" ? "#ffffff" : "#124B33"} />
       ) : (
         <>
           {icon ? <View className="mr-2">{icon}</View> : null}
 
-          <Text className={`text-base font-bold ${LABEL[variant]}`}>
+          <Text className={`text-lg font-extrabold ${LABEL[variant]}`}>
             {label}
           </Text>
         </>
