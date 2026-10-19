@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
 import { CheckCircle2, IdCard, Lock, Mail, User } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
+import Checkbox from "expo-checkbox";
 import Recaptcha, { RecaptchaRef } from "react-native-recaptcha-that-works";
 import useSWR from "swr";
 
@@ -9,19 +10,18 @@ import {
   InstitutionItem,
   InstitutionSelect,
 } from "@/components/auth/InstitutionSelect";
-import { RoleSelector } from "@/components/auth/RoleSelector";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { cadastro } from "@/database/auth";
 import { getInstitutions } from "@/database/institutions";
-import { normalizeMatricula, validateMatricula } from "@/lib/email";
+import { normalizeMatricula, validateMatricula } from "@/lib/matricula";
 import { PerfilAcademico } from "@/lib/perfil";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 6;
 
 const RECAPTCHA_SITE_KEY = "SUA_SITE_KEY";
-const RECAPTCHA_BASE_URL = "http://localhost"; // o mesmo domínio cadastrado no console
+const RECAPTCHA_BASE_URL = "http://localhost";
 
 type FormErrors = Partial<
   Record<
@@ -36,11 +36,15 @@ export function SignUpForm() {
 
   const [role, setRole] = useState<PerfilAcademico>("aluno");
   const [name, setName] = useState("");
-  const [matricula, setMatricula] = useState("");
   const [email, setEmail] = useState("");
-  const [instituicao, setInstituicao] = useState<string | null>(null);
   const [senha, setSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
+  
+  // Controle do vínculo institucional
+  const [temVinculo, setTemVinculo] = useState(false);
+  const [matricula, setMatricula] = useState("");
+  const [instituicao, setInstituicao] = useState<string | null>(null);
+  
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -70,36 +74,39 @@ export function SignUpForm() {
     const result: FormErrors = {};
 
     if (!name.trim()) result.name = "Informe seu nome completo.";
-    if (!matriculaCheck.valid) result.matricula = matriculaCheck.message;
     if (!EMAIL_PATTERN.test(email.trim())) result.email = "E-mail inválido.";
-    if (!instituicao) result.instituicao = "Selecione sua instituição.";
     if (senha.length < MIN_PASSWORD_LENGTH) {
       result.senha = `A senha precisa ter ao menos ${MIN_PASSWORD_LENGTH} caracteres.`;
     }
     if (senha !== confirmacao) result.confirmacao = "As senhas não conferem.";
 
+    // Valida matrícula e instituição APENAS se o checkbox estiver marcado
+    if (temVinculo) {
+      if (!matriculaCheck.valid) result.matricula = matriculaCheck.message;
+      if (!instituicao) result.instituicao = "Selecione sua instituição.";
+    }
+
     return result;
   }, [
     submitted,
     name,
-    matriculaCheck,
     email,
-    instituicao,
     senha,
     confirmacao,
+    temVinculo,
+    matriculaCheck,
+    instituicao,
   ]);
 
-  // 1) Valida o formulário e abre o captcha
   function handleSubmit() {
     setSubmitted(true);
 
     const invalid =
       !name.trim() ||
-      !matriculaCheck.valid ||
       !EMAIL_PATTERN.test(email.trim()) ||
-      !instituicao ||
       senha.length < MIN_PASSWORD_LENGTH ||
-      senha !== confirmacao;
+      senha !== confirmacao ||
+      (temVinculo && (!matriculaCheck.valid || !instituicao));
 
     if (invalid) return;
     if (submitting) return;
@@ -107,20 +114,20 @@ export function SignUpForm() {
     recaptchaRef.current?.open();
   }
 
-  // 2) Captcha resolvido: faz o cadastro com o token
   async function handleVerify(recaptchaToken: string) {
-    if (!instituicao || !matriculaCheck.valid) return;
+    if (temVinculo && (!instituicao || !matriculaCheck.valid)) return;
 
     setSubmitting(true);
 
     const result = await cadastro({
       role,
       name: name.trim(),
-      matricula: matriculaCheck.value,
       email: email.trim(),
-      instituicao,
       senha,
       recaptchaToken,
+      // Se não tiver vínculo, envia vazio para o banco
+      matricula: temVinculo ? matriculaCheck.value : "",
+      instituicao: temVinculo ? instituicao : null,
     });
 
     setSubmitting(false);
@@ -130,14 +137,12 @@ export function SignUpForm() {
       return;
     }
 
-    Alert.alert("Conta criada", "Agora entre com sua matrícula e senha.");
+    Alert.alert("Conta criada", "Agora entre com sua conta.");
     router.replace("/login");
   }
 
   return (
     <View>
-      <RoleSelector value={role} onChange={setRole} />
-
       <TextField
         label="Nome"
         value={name}
@@ -148,37 +153,6 @@ export function SignUpForm() {
         icon={<User size={20} color={errors.name ? "#ef4444" : "#64748b"} />}
         tone={errors.name ? "error" : "neutral"}
         helper={errors.name}
-      />
-
-      <TextField
-        label="Matrícula"
-        value={matricula}
-        onChangeText={(value) => setMatricula(normalizeMatricula(value))}
-        placeholder="Digite sua matrícula"
-        keyboardType="numbers-and-punctuation"
-        autoCapitalize="none"
-        autoCorrect={false}
-        icon={
-          <IdCard size={20} color={errors.matricula ? "#ef4444" : "#64748b"} />
-        }
-        tone={
-          errors.matricula
-            ? "error"
-            : matriculaCheck.valid
-              ? "success"
-              : "neutral"
-        }
-        helper={
-          errors.matricula ??
-          (matriculaCheck.valid
-            ? "Enviada para a instituição confirmar seu vínculo."
-            : "Usada para identificar seu vínculo acadêmico.")
-        }
-        helperIcon={
-          !errors.matricula && matriculaCheck.valid ? (
-            <CheckCircle2 size={14} color="#047857" />
-          ) : undefined
-        }
       />
 
       <TextField
@@ -193,18 +167,6 @@ export function SignUpForm() {
         icon={<Mail size={20} color={errors.email ? "#ef4444" : "#64748b"} />}
         tone={errors.email ? "error" : "neutral"}
         helper={errors.email}
-      />
-
-      <InstitutionSelect
-        items={items}
-        value={instituicao}
-        onChange={setInstituicao}
-        loading={isLoading}
-        error={
-          instituicoesError
-            ? "Não foi possível carregar as instituições."
-            : errors.instituicao
-        }
       />
 
       <TextField
@@ -230,15 +192,56 @@ export function SignUpForm() {
         autoCorrect={false}
         textContentType="newPassword"
         secureToggle
-        onSubmitEditing={handleSubmit}
-        icon={
-          <Lock size={20} color={errors.confirmacao ? "#ef4444" : "#64748b"} />
-        }
+        icon={<Lock size={20} color={errors.confirmacao ? "#ef4444" : "#64748b"} />}
         tone={errors.confirmacao ? "error" : "neutral"}
         helper={errors.confirmacao}
       />
 
-      <View className="mt-2">
+      <Pressable 
+        className="mb-6 mt-2 flex-row items-center"
+        onPress={() => setTemVinculo(!temVinculo)}
+      >
+        <Checkbox
+          value={temVinculo}
+          onValueChange={setTemVinculo}
+          color={temVinculo ? "#124B33" : undefined}
+          className="h-7 w-7 rounded-md border-slate-300" 
+        />
+        <Text className="ml-3 flex-1 text-base font-bold text-slate-800">
+          Sou vinculado(a) a uma instituição de ensino (Opcional)
+        </Text>
+      </Pressable>
+
+      {/* Condicional: Só aparece se temVinculo for verdadeiro */}
+      {temVinculo && (
+        <>
+          <TextField
+            label="Matrícula"
+            value={matricula}
+            onChangeText={(value) => setMatricula(normalizeMatricula(value))}
+            placeholder="Digite sua matrícula"
+            keyboardType="numbers-and-punctuation"
+            autoCapitalize="none"
+            autoCorrect={false}
+            icon={<IdCard size={20} color={errors.matricula ? "#ef4444" : "#64748b"} />}
+            tone={errors.matricula ? "error" : matriculaCheck.valid ? "success" : "neutral"}
+            helper={errors.matricula}
+            helperIcon={!errors.matricula && matriculaCheck.valid ? (
+              <CheckCircle2 size={14} color="#047857" />
+            ) : undefined}
+          />
+
+          <InstitutionSelect
+            items={items}
+            value={instituicao}
+            onChange={setInstituicao}
+            loading={isLoading}
+            error={instituicoesError ? "Não foi possível carregar as instituições." : errors.instituicao}
+          />
+        </>
+      )}
+
+      <View className="mt-4">
         <Button label="Cadastrar" onPress={handleSubmit} loading={submitting} />
       </View>
 
@@ -246,15 +249,11 @@ export function SignUpForm() {
         ref={recaptchaRef}
         siteKey={RECAPTCHA_SITE_KEY}
         baseUrl={RECAPTCHA_BASE_URL}
-        size="normal" // use "invisible" se sua chave for invisível
+        size="normal"
         onVerify={handleVerify}
         action="cadastro"
-        onExpire={() =>
-          Alert.alert("Captcha expirado", "Tente cadastrar novamente.")
-        }
-        onError={() =>
-          Alert.alert("Erro", "Não foi possível carregar o captcha.")
-        }
+        onExpire={() => Alert.alert("Captcha expirado", "Tente cadastrar novamente.")}
+        onError={() => Alert.alert("Erro", "Não foi possível carregar o captcha.")}
       />
     </View>
   );
