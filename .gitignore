@@ -1,13 +1,15 @@
-node_modules
+node_modules/
 .env
-dist
+dist/
 coverage
 *.log
 .idea
 .vscode
 .DS_Store
 .expo/
-android
+android/
+frida/
+.github/
 
 expo-env.d.ts
 # @end expo-cli
