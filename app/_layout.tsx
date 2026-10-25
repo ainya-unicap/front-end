@@ -11,7 +11,7 @@ import "@/global.css";
 import { initDatabase } from '@/database/localDb';
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  anchor: 'index',
 };
 
 export default function RootLayout() {
@@ -30,8 +30,8 @@ export default function RootLayout() {
             focusThrottleInterval: 300000,
           }}
         >
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack >
+            <Stack.Screen name="index" options={{ headerShown: false }}/>
             <Stack.Screen name="welcome" options={{ headerShown: false }} />
 
             <Stack.Screen name="login" options={{ headerShown: false }} />
