@@ -6,11 +6,11 @@ type HomeHeaderProps = {
   nomeUsuario?: string;
 };
 
-export function HomeHeader({ resumo, nomeUsuario = "Deivyson" }: HomeHeaderProps) {
+export function HomeHeader({ resumo, nomeUsuario }: HomeHeaderProps) {
   return (
     <View className="rounded-b-3xl bg-emerald-900 px-6 pb-4 pt-14">
       <Text className="text-3xl font-bold text-white">
-        Olá, {nomeUsuario}
+        Olá{nomeUsuario ? `, ${nomeUsuario}` : ""}
       </Text>
     </View>
   );

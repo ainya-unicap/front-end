@@ -106,9 +106,9 @@ export default function PerfilScreen() {
         showsVerticalScrollIndicator={false}
       >
         <ProfileHeader
-          name={perfil?.name ?? "Usuário"}
+          name={perfil?.name ?? ""}
           email={perfil?.email ?? ""}
-          avatarUri={perfil?.avatar_url ?? perfil?.avatarUrl ?? perfil?.avatar}
+          avatarUri={perfil?.avatarUrl}
           isUploadingAvatar={isUploadingAvatar}
           onChangeAvatar={handleChangeAvatar}
         />
