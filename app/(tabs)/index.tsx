@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import useSWR from "swr";
+import { StatusBar } from "expo-status-bar";
 
 import { getFormulariosByUser } from "@/database/formularios";
 import { getRelatorios } from "@/database/relatorios";
@@ -60,6 +61,7 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-slate-50">
+      <StatusBar style="dark" />
       <HomeHeader resumo={resumo} />
 
       <ScrollView
@@ -138,7 +140,6 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <BottomNavbar active="home" />
     </View>
   );
 }

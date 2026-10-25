@@ -80,7 +80,7 @@ export function TextField({
           onFocus={handleFocus}
           onBlur={handleBlur}
           placeholderTextColor="#94a3b8"
-          className="flex-1 text-base font-semibold text-slate-900"
+          className="flex-1 text-base font-semibold text-slate-900 "
         />
 
         {trailing ? <View className="ml-2">{trailing}</View> : null}
