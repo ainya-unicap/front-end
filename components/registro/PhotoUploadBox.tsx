@@ -8,15 +8,24 @@ export type SelectedPhoto = {
   fileName: string;
 };
 
+export const MIN_REGISTRO_PHOTOS = 5;
+export const MAX_REGISTRO_PHOTOS = 10;
+
 type PhotoUploadBoxProps = {
-  photoBase64?: string | null;
-  onPhotoSelected: (photo: SelectedPhoto | null) => void;
+  photos: SelectedPhoto[];
+  onPhotosChange: (photos: SelectedPhoto[]) => void;
 };
 
 async function pickPhoto(
   mode: "camera" | "library",
-  onPhotoSelected: (photo: SelectedPhoto | null) => void
+  remainingSlots: number,
+  onPhotosSelected: (photos: SelectedPhoto[]) => void
 ) {
+  if (remainingSlots <= 0) {
+    Alert.alert("Limite de fotos", `Cada registro aceita no máximo ${MAX_REGISTRO_PHOTOS} fotos.`);
+    return;
+  }
+
   const permissionResult =
     mode === "camera"
       ? await ImagePicker.requestCameraPermissionsAsync()
@@ -41,97 +50,123 @@ async function pickPhoto(
           mediaTypes: ["images"],
         })
       : await ImagePicker.launchImageLibraryAsync({
-          allowsEditing: true,
+          allowsMultipleSelection: true,
+          selectionLimit: remainingSlots,
           quality: 0.8,
           base64: true,
           mediaTypes: ["images"],
         });
 
-  if (result.canceled || !result.assets?.[0]) {
+  if (result.canceled || !result.assets?.length) {
     return;
   }
 
-  const asset = result.assets[0];
+  const selectedPhotos: SelectedPhoto[] = [];
+  let unavailableCount = 0;
+  let unsupportedCount = 0;
+  let oversizedCount = 0;
 
-  if (!asset.base64) {
+  for (const asset of result.assets.slice(0, remainingSlots)) {
+    if (!asset.base64) {
+      unavailableCount += 1;
+      continue;
+    }
+
+    const mimeType = asset.mimeType ?? "image/jpeg";
+    if (!mimeType.match(/^image\/(jpeg|png|webp)$/)) {
+      unsupportedCount += 1;
+      continue;
+    }
+
+    if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+      oversizedCount += 1;
+      continue;
+    }
+
+    selectedPhotos.push({
+      base64: asset.base64,
+      uri: asset.uri,
+      mimeType,
+      fileName:
+        asset.fileName ??
+        `registro-foto-${Date.now()}-${selectedPhotos.length}.${mimeType.split("/")[1]}`,
+    });
+  }
+
+  if (selectedPhotos.length > 0) {
+    onPhotosSelected(selectedPhotos);
+  }
+
+  const rejectedCount = unavailableCount + unsupportedCount + oversizedCount;
+  if (rejectedCount > 0) {
+    const reasons = [
+      unavailableCount > 0 ? `${unavailableCount} indisponível(is)` : null,
+      unsupportedCount > 0 ? `${unsupportedCount} com formato não aceito` : null,
+      oversizedCount > 0 ? `${oversizedCount} acima de 5 MB` : null,
+    ].filter(Boolean);
     Alert.alert(
-      "Foto indisponível",
-      "Não foi possível carregar esta imagem no momento. Tente novamente."
+      "Algumas fotos não foram adicionadas",
+      `Aceitamos imagens JPEG, PNG ou WEBP de até 5 MB. ${reasons.join(", ")}.`
     );
-    return;
   }
-
-  const mimeType = asset.mimeType ?? "image/jpeg";
-  if (!mimeType.match(/^image\/(jpeg|png|webp)$/)) {
-    Alert.alert("Formato não aceito", "Escolha uma imagem JPEG, PNG ou WEBP.");
-    return;
-  }
-
-  if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-    Alert.alert("Imagem muito grande", "A foto deve ter no máximo 5 MB.");
-    return;
-  }
-
-  onPhotoSelected({
-    base64: asset.base64,
-    uri: asset.uri,
-    mimeType,
-    fileName: asset.fileName ?? `registro-foto.${mimeType.split("/")[1]}`,
-  });
 }
 
-export function PhotoUploadBox({ photoBase64, onPhotoSelected }: PhotoUploadBoxProps) {
-  const previewUri = photoBase64 ? `data:image/jpeg;base64,${photoBase64}` : null;
+export function PhotoUploadBox({ photos, onPhotosChange }: PhotoUploadBoxProps) {
+  const remainingSlots = MAX_REGISTRO_PHOTOS - photos.length;
+  const isAtLimit = remainingSlots <= 0;
 
   return (
     <View>
-      <Pressable
-        onPress={() => pickPhoto("camera", onPhotoSelected)}
-        className="h-36 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50 active:opacity-80"
-      >
-        {previewUri ? (
-          <Image source={{ uri: previewUri }} className="h-full w-full" resizeMode="cover" />
-        ) : (
-          <>
-            <Text className="text-4xl">📸</Text>
+      <Text className="mb-3 text-center text-sm font-medium text-slate-600">
+        {photos.length} de {MAX_REGISTRO_PHOTOS} fotos · mínimo de {MIN_REGISTRO_PHOTOS}
+      </Text>
 
-            <Text className="mt-2 text-base font-bold text-emerald-900">
-              Tirar foto ou enviar
-            </Text>
+      {photos.length > 0 ? (
+        <View className="mb-3 flex-row flex-wrap gap-3">
+          {photos.map((photo, index) => (
+            <View key={`${photo.uri}-${index}`} className="relative">
+              <Image
+                source={{ uri: photo.uri }}
+                className="h-20 w-20 rounded-xl bg-emerald-100"
+                resizeMode="cover"
+              />
+              <Pressable
+                accessibilityLabel={`Remover foto ${index + 1}`}
+                onPress={() => onPhotosChange(photos.filter((_, photoIndex) => photoIndex !== index))}
+                className="absolute -right-2 -top-2 h-7 w-7 items-center justify-center rounded-full bg-slate-800"
+              >
+                <Text className="text-sm font-bold text-white">×</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
-            <Text className="mt-1 text-center text-sm text-slate-400">
-              Data e hora adicionadas automaticamente
-            </Text>
-          </>
-        )}
-      </Pressable>
+      <Text className="mb-3 text-center text-sm text-slate-400">
+        Escolha de {MIN_REGISTRO_PHOTOS} a {MAX_REGISTRO_PHOTOS} fotos. A data e hora são adicionadas automaticamente.
+      </Text>
 
-      {previewUri ? (
-        <Text className="mt-2 text-center text-sm font-medium text-emerald-700">
-          Foto adicionada ao registro
+      {isAtLimit ? (
+        <Text className="mb-3 text-center text-sm font-medium text-amber-700">
+          Limite de {MAX_REGISTRO_PHOTOS} fotos atingido.
         </Text>
       ) : null}
 
       <View className="mt-4 flex-row gap-2">
         <Pressable
-          onPress={() => pickPhoto("camera", onPhotoSelected)}
-          className="h-14 flex-1 items-center justify-center rounded-lg bg-emerald-100 active:opacity-80"
+          onPress={() => pickPhoto("camera", remainingSlots, (selected) => onPhotosChange([...photos, ...selected]))}
+          disabled={isAtLimit}
+          className="h-14 flex-1 items-center justify-center rounded-lg bg-emerald-100 active:opacity-80 disabled:opacity-50"
         >
-          <Text className="text-xl">📷</Text>
+          <Text className="text-sm font-bold text-emerald-900">📷 Tirar foto</Text>
         </Pressable>
 
         <Pressable
-          onPress={() => pickPhoto("library", onPhotoSelected)}
-          className="h-14 flex-1 items-center justify-center rounded-lg bg-emerald-100 active:opacity-80"
+          onPress={() => pickPhoto("library", remainingSlots, (selected) => onPhotosChange([...photos, ...selected]))}
+          disabled={isAtLimit}
+          className="h-14 flex-1 items-center justify-center rounded-lg bg-emerald-100 active:opacity-80 disabled:opacity-50"
         >
-          <Text className="text-xl">🖼️</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => onPhotoSelected(null)}
-          className="h-14 flex-1 items-center justify-center rounded-lg bg-slate-200 active:opacity-80"
-        >
-          <Text className="text-xl">✕</Text>
+          <Text className="text-sm font-bold text-emerald-900">🖼️ Enviar da galeria</Text>
         </Pressable>
       </View>
     </View>

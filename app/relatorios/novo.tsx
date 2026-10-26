@@ -7,11 +7,15 @@ import {
   Text,
   View,
 } from "react-native";
+import { isAxiosError } from "axios";
 import { router } from "expo-router";
 import useSWR from "swr";
 
 import { getCanteirosByUser } from "@/database/canteiros";
-import { generateRelatorio } from "@/database/relatoriosService";
+import {
+  generateRelatorio,
+  generateRelatorioComAnalise,
+} from "@/database/relatoriosService";
 
 import HeaderStack from "@/components/navigation/headerStack";
 import { SectionCard } from "@/components/registro/SectionCard";
@@ -71,7 +75,7 @@ export default function NovoRelatorioScreen() {
   }, [canteirosData]);
 
   const [canteiroId, setCanteiroId] = useState("");
-  const [reportType, setReportType] = useState<ReportType>("simples");
+  const [reportType, setReportType] = useState<ReportType>("analise");
   const [generating, setGenerating] = useState(false);
 
   // Seleciona o primeiro canteiro quando a lista carrega
@@ -87,18 +91,38 @@ export default function NovoRelatorioScreen() {
   );
 
   async function handleGerar() {
-    if (!canteiro?.listId) {
-      Alert.alert(
-        "Sem lista de formulários",
-        "Este canteiro ainda não possui uma lista de formulários para gerar o relatório."
-      );
+    if (!canteiro) {
+      Alert.alert("Selecione um canteiro", "Escolha o canteiro para gerar o relatório.");
       return;
     }
 
     try {
       setGenerating(true);
 
-      // A IA gera o relatório a partir da lista de formulários do canteiro
+      if (reportType === "analise") {
+        const response = await generateRelatorioComAnalise(canteiro.id);
+        if (response.status !== 201) {
+          const responseData = response.data;
+          const errorMessage =
+            responseData?.message ??
+            responseData?.error ??
+            "A solicitação não foi concluída com sucesso.";
+          Alert.alert("Erro ao gerar relatório", errorMessage);
+          return;
+        }
+
+        router.replace("/relatorios");
+        return;
+      }
+
+      if (!canteiro.listId) {
+        Alert.alert(
+          "Sem lista de formulários",
+          "Este canteiro ainda não possui uma lista de formulários para gerar o relatório."
+        );
+        return;
+      }
+
       const relatorio = await generateRelatorio({ list_id: canteiro.listId });
       const relatorioId =
         relatorio?.id ?? relatorio?.data?.id ?? relatorio?.relatorio?.id;
@@ -109,9 +133,17 @@ export default function NovoRelatorioScreen() {
       });
     } catch (error) {
       console.error("Erro ao gerar relatório:", error);
+      const responseData = isAxiosError<{
+        message?: string;
+        error?: string;
+      }>(error)
+        ? error.response?.data
+        : undefined;
       Alert.alert(
         "Erro ao gerar",
-        "Não foi possível gerar o relatório agora. Tente novamente."
+        responseData?.message ??
+          responseData?.error ??
+          "Não foi possível gerar o relatório agora. Tente novamente."
       );
     } finally {
       setGenerating(false);
@@ -166,7 +198,7 @@ export default function NovoRelatorioScreen() {
               title="Relatório simples"
               subtitle="Seções obrigatórias"
               selected={reportType === "simples"}
-              onPress={() => setReportType("simples")}
+              disabled
             />
 
             <AnalysisTypeCard
@@ -204,7 +236,7 @@ export default function NovoRelatorioScreen() {
             <ActivityIndicator color="#ffffff" />
           ) : (
             <Text className="text-base font-bold text-white">
-              ✨ Gerar relatório com IA
+              Gerar relatório
             </Text>
           )}
         </Pressable>

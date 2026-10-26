@@ -3,6 +3,23 @@ import { api } from "./index";
 
 export type FormularioType = 'SEMANAL';
 
+export type FormularioPayload = {
+    list_id: string;
+    type: FormularioType;
+    title: string;
+    date: string;
+    week?: number;
+    weather?: 'SOL' | 'NUBLADO' | 'CHUVA';
+    estimated_height_cm?: number;
+    phenological_stage?: 'VEGETATIVO' | 'ELONGACAO' | 'FLORESCIMENTO';
+    checklist_irrigacao: boolean;
+    checklist_capina: boolean;
+    checklist_adubacao: boolean;
+    checklist_plantio: boolean;
+    checklist_pragas: boolean;
+    observations?: string;
+};
+
 export async function getFormularios() {
     try {
         const userId = getUserId();
@@ -14,7 +31,7 @@ export async function getFormularios() {
     }
 }
 
-export async function createFormulario(data: { list_id: string; type: FormularioType; observations?: string }) {
+export async function createFormulario(data: FormularioPayload) {
     try {
         const userId = getUserId();
         if (!userId) {

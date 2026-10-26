@@ -10,6 +10,15 @@ export async function generateRelatorio(data: { list_id: string }) {
     }
 }
 
+export async function generateRelatorioComAnalise(canteiroId: string) {
+    try {
+        return await api.post(`canteiros/${canteiroId}/relatorio-ia`);
+    } catch (error) {
+        console.error('Error generating relatorio com analise:', error);
+        throw error;
+    }
+}
+
 export async function getRelatorioById(id: string) {
     try {
         const response = await api.get(`relatorios/${id}`);
