@@ -120,6 +120,7 @@ export default function PerfilScreen() {
               iconBg="bg-violet-100"
               label="Nome completo"
               value={perfil?.name}
+              onPress={() => router.push("/editar-perfil/nome" as any)}
             />
             <ProfileRow
               icon="📧"
@@ -132,6 +133,7 @@ export default function PerfilScreen() {
               iconBg="bg-emerald-100"
               label="Senha"
               value="••••••••"
+              onPress={() => router.push("/editar-perfil/senha" as any)}
               isLast
             />
           </ProfileSection>
@@ -142,18 +144,21 @@ export default function PerfilScreen() {
               iconBg="bg-amber-100"
               label="Instituição"
               value={perfil?.institution?.name ?? "Sem instituição vinculada"}
+              onPress={() => router.push("/editar-perfil/instituicao" as any)}
             />
             <ProfileRow
               icon="📅"
               iconBg="bg-orange-100"
               label="Período letivo"
               value={perfil?.academic_period?.name ?? "Sem período vinculado"}
+              onPress={() => router.push("/editar-perfil/turma" as any)}
             />
             <ProfileRow
               icon="👥"
               iconBg="bg-violet-100"
               label="Turma"
               value={perfil?.turma?.name ?? "Sem turma vinculada"}
+              onPress={() => router.push("/editar-perfil/turma" as any)}
               isLast
             />
           </ProfileSection>

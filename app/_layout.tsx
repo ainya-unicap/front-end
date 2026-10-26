@@ -45,6 +45,7 @@ export default function RootLayout() {
             <Stack.Screen name="relatorios/[id]/index" options={{ headerShown: false }} />
             <Stack.Screen name="relatorios/[id]/desenvolvimento" options={{ headerShown: false }} />
             <Stack.Screen name="registro" options={{ headerShown: false }} />
+            <Stack.Screen name="editar-perfil/[campo]" options={{ headerShown: false }} />
           </Stack>
         </SWRConfig>
         <StatusBar style="dark" />

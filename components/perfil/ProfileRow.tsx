@@ -37,7 +37,7 @@ export function ProfileRow({
         ) : null}
       </View>
 
-      <Text className="text-xl text-slate-300">›</Text>
+      {onPress ? <Text className="text-xl text-slate-300">›</Text> : null}
     </Pressable>
   );
 }
