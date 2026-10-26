@@ -17,6 +17,9 @@ type CanteiroItem = {
   progress: number;
 };
 
+const SEMANAS_ACOMPANHAMENTO = 12;
+const DIAS_PARA_PAUSAR = 14;
+
 const getCategoryIcon = (category: string): string => {
   const iconMap: Record<string, string> = {
     'CACTACEA': '🌵',
@@ -53,7 +56,17 @@ const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
     ? ultimo.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
     : '—';
 
-  const progress = totalRegistros > 0 ? Math.min(100, (totalRegistros / 20) * 100) : 0;
+  // O acompanhamento tem até 12 semanas (limite de "week" no backend):
+  // progresso = registros semanais feitos / 12
+  const progress = Math.min(100, (totalRegistros / SEMANAS_ACOMPANHAMENTO) * 100);
+
+  // Registro semanal: sem registro há mais de 14 dias (duas semanas) = pausado.
+  // Canteiro novo, ainda sem nenhum registro, conta como ativo.
+  const diasSemRegistro = ultimo
+    ? (Date.now() - ultimo.getTime()) / 86400000
+    : 0;
+  const status: CanteiroItem['status'] =
+    diasSemRegistro > DIAS_PARA_PAUSAR ? 'PAUSADO' : 'ATIVO';
 
   return {
     id: canteiro.id,
@@ -62,7 +75,7 @@ const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
     description: canteiro.plant?.name || 'Planta',
     totalRegistros,
     lastRecord,
-    status: canteiro.status || 'ATIVO',
+    status,
     progress: Math.round(progress),
   };
 };

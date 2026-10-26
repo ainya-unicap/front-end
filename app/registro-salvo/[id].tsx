@@ -10,7 +10,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import useSWR from "swr";
 
-import { getFormularioById, syncFormulario } from "@/database/formularios";
+import { finalizarFormulario, getFormularioById } from "@/database/formularios";
 
 import { SuccessCard } from "@/components/registro-salvo/SuccessCard";
 import { SummaryMetricCard } from "@/components/registro-salvo/SummaryMetricCard";
@@ -114,27 +114,28 @@ export default function RegistroSalvoScreen() {
   // A API pode devolver o objeto direto ou embrulhado em { data: {...} }
   const formulario = (formularioResp as any)?.data ?? formularioResp;
 
-  const [syncing, setSyncing] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
 
   const subtitle = useMemo(
     () => (formulario ? formatDateTimeRange(formulario) : ""),
     [formulario]
   );
 
-  async function handleSync() {
+  // Registro incompleto (envio interrompido): marca como completo no servidor
+  async function handleFinalizar() {
     try {
-      setSyncing(true);
-      await syncFormulario(String(id));
+      setFinalizing(true);
+      await finalizarFormulario(String(id));
       await mutate();
-      Alert.alert("Sincronizado", "Registro sincronizado com sucesso.");
+      Alert.alert("Pronto", "Registro marcado como completo.");
     } catch (error) {
-      console.log("Erro ao sincronizar:", error);
+      console.log("Erro ao finalizar:", error);
       Alert.alert(
-        "Não sincronizado",
-        "Não foi possível sincronizar agora. Tente novamente depois."
+        "Não foi possível finalizar",
+        "Verifique sua conexão e tente novamente."
       );
     } finally {
-      setSyncing(false);
+      setFinalizing(false);
     }
   }
 
@@ -265,17 +266,21 @@ export default function RegistroSalvoScreen() {
             </Text>
           </Pressable>
 
-          <Pressable
-            onPress={handleSync}
-            disabled={syncing}
-            className="h-14 flex-1 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
-          >
-            {syncing ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text className="text-base font-bold text-white">Sincronizar</Text>
-            )}
-          </Pressable>
+          {!formulario.synced ? (
+            <Pressable
+              onPress={handleFinalizar}
+              disabled={finalizing}
+              className="h-14 flex-1 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
+            >
+              {finalizing ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text className="text-base font-bold text-white">
+                  Finalizar registro
+                </Text>
+              )}
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
     </View>

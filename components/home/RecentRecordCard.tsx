@@ -31,8 +31,9 @@ export function RecentRecordCard({ item }: RecentRecordCardProps) {
   const plantName = item.list?.plant?.name || "Planta";
   const formattedDate = formatDate(item.createdAt);
   
-  // Termos práticos para evidenciar se subiu para o banco ou se está aguardando internet
-  const status = item.synced ? "Sincronizado na nuvem" : "Salvo offline";
+  // synced = true quando o registro terminou de ser salvo (dados e fotos);
+  // false é um registro que ficou incompleto no meio do envio
+  const status = item.synced ? "Registro completo" : "Registro incompleto";
 
   return (
     <Pressable

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,14 +13,11 @@ import useSWR from "swr";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import {
-  createChecklistItems,
   createFormulario,
-  createMeasurements,
   finalizarFormulario,
   uploadFormularioPhoto,
 } from "@/database/formularios";
 import { getListaById } from "@/database/listasFormularios";
-import { getPlantTemplates } from "@/database/plantTemplates";
 
 import { FieldBox } from "@/components/registro/FieldBox";
 import { SectionCard } from "@/components/registro/SectionCard";
@@ -62,16 +59,6 @@ export default function RegistroScreen() {
   );
 
   const listaObj = (lista as any)?.data ?? lista;
-  const plantId =
-    listaObj?.canteiro?.plant_id ??
-    listaObj?.canteiro?.plant?.id ??
-    listaObj?.plant_id ??
-    listaObj?.plant?.id;
-
-  const { data: templates } = useSWR(
-    plantId ? `plant-templates-${plantId}` : null,
-    () => getPlantTemplates(plantId)
-  );
 
   // Estados Visuais do Formulário
   const [date, setDate] = useState(hoje());
@@ -93,31 +80,6 @@ export default function RegistroScreen() {
     { id: "plantio", label: "Plantio / Replantio", checked: false },
     { id: "pragas", label: "Controle de pragas", checked: false },
   ]);
-
-  // Estados de Mapeamento para o Banco de Dados (Fallback)
-  const [alturaTplId, setAlturaTplId] = useState("");
-  const [checklistTplIds, setChecklistTplIds] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!templates) return;
-    const list: any[] = Array.isArray(templates) ? templates : (templates?.data ?? []);
-
-    const alturaTpl = list.find((t) => t.field_name?.toLowerCase().includes("altura"));
-    if (alturaTpl) setAlturaTplId(String(alturaTpl.id));
-
-    const mapping: Record<string, string> = {};
-    list.forEach((t) => {
-      if (t.type === "CHECKLIST" && t.field_name) {
-        const name = t.field_name.toLowerCase();
-        if (name.includes("irriga")) mapping["irrigacao"] = String(t.id);
-        if (name.includes("limpeza") || name.includes("capina")) mapping["limpeza"] = String(t.id);
-        if (name.includes("aduba")) mapping["adubacao"] = String(t.id);
-        if (name.includes("plantio") || name.includes("replantio")) mapping["plantio"] = String(t.id);
-        if (name.includes("praga")) mapping["pragas"] = String(t.id);
-      }
-    });
-    setChecklistTplIds(mapping);
-  }, [templates]);
 
   function toggleChecklistFixo(id: string) {
     setChecklistFixo((current) =>
@@ -160,7 +122,6 @@ export default function RegistroScreen() {
 
       setSaving(true);
 
-      const itensChecados = checklistFixo.filter((i) => i.checked);
       const nomeCanteiro =
         listaObj?.canteiro?.name ?? listaObj?.name ?? "Canteiro";
       const title = `${semana ? `Semana ${semana}` : "Registro semanal"} — ${nomeCanteiro}`;
@@ -187,17 +148,6 @@ export default function RegistroScreen() {
 
       for (const photo of photos) {
         await uploadFormularioPhoto(formularioId, photo);
-      }
-
-      const validTemplateIds = itensChecados.map((i) => checklistTplIds[i.id]).filter(Boolean);
-      if (validTemplateIds.length > 0) {
-        await createChecklistItems(formularioId, validTemplateIds);
-      }
-
-      if (alturaEstimada && alturaTplId) {
-        await createMeasurements(formularioId, [
-          { template_id: alturaTplId, value: Number(alturaEstimada) },
-        ]);
       }
 
       await finalizarFormulario(formularioId);
