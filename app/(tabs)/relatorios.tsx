@@ -33,13 +33,12 @@ export default function ListaRelatoriosScreen() {
   const renderItem = ({ item }: { item: any }) => {
     const planta =
       item.list?.plant?.name ?? item.canteiro?.name ?? 'Relatório';
-    const periodo =
-      item.academic_period?.name ??
-      (item.createdAt
-        ? new Date(item.createdAt).toLocaleDateString('pt-BR')
-        : '');
+    // Data de criação do relatório (o backend não guarda período letivo nele)
+    const periodo = item.createdAt
+      ? new Date(item.createdAt).toLocaleDateString('pt-BR')
+      : '';
     const status: string = item.status ?? 'RASCUNHO';
-    const registros = `${item._count?.formularios ?? item.formularios?.length ?? 0} registros`;
+    const registros = `${item.list?._count?.formularios ?? 0} registros`;
 
     return (
       <TouchableOpacity

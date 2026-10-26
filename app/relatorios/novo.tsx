@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { isAxiosError } from "axios";
 import { router } from "expo-router";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 
 import { getCanteirosByUser } from "@/database/canteiros";
 import {
@@ -47,13 +47,19 @@ const CATEGORY_ICON: Record<string, string> = {
 };
 
 function mapCanteiro(canteiro: any): CanteiroOption {
-  const lista = canteiro.listaDeFormularios?.[0];
+  const listas: any[] = canteiro.listaDeFormularios ?? [];
+  const lista = listas[0];
+  // Soma os formulários de todas as listas do canteiro
+  const totalForms = listas.reduce(
+    (sum, item) => sum + (item._count?.formularios ?? 0),
+    0
+  );
   return {
     id: String(canteiro.id),
     listId: lista?.id ? String(lista.id) : null,
     icon: CATEGORY_ICON[canteiro.plant?.category] ?? "🌱",
     name: canteiro.plant?.name ?? canteiro.name ?? "Canteiro",
-    totalForms: lista?._count?.formularios ?? 0,
+    totalForms,
     location: canteiro.name ?? "",
     weeks: [],
     extraCount: 0,
@@ -111,7 +117,18 @@ export default function NovoRelatorioScreen() {
           return;
         }
 
-        router.replace("/relatorios");
+        await mutate("relatorios");
+
+        // Abre o relatório recém-gerado para o aluno revisar as seções
+        const novoId = response.data?.id ?? response.data?.data?.id;
+        if (novoId) {
+          router.replace({
+            pathname: "/relatorios/[id]",
+            params: { id: String(novoId) },
+          });
+        } else {
+          router.replace("/relatorios");
+        }
         return;
       }
 
@@ -124,6 +141,7 @@ export default function NovoRelatorioScreen() {
       }
 
       const relatorio = await generateRelatorio({ list_id: canteiro.listId });
+      await mutate("relatorios");
       const relatorioId =
         relatorio?.id ?? relatorio?.data?.id ?? relatorio?.relatorio?.id;
 

@@ -18,6 +18,10 @@ export default function RelatorioObjetivoScreen() {
     () => getRelatorioById(id)
   );
 
+  // Relatório submetido ou corrigido não pode mais ser editado
+  const readOnly =
+    !!relatorio && ((relatorio as any)?.data ?? relatorio).status !== 'RASCUNHO';
+
   const [objective, setObjective] = useState('');
   const [specificObjectives, setSpecificObjectives] = useState('');
 
@@ -33,7 +37,7 @@ export default function RelatorioObjetivoScreen() {
   // Salva o objetivo no relatório e avança para a próxima seção
   const handleProximo = async () => {
     try {
-      await updateRelatorioObjective(id, objective);
+      if (!readOnly) await updateRelatorioObjective(id, objective);
       router.push(`/relatorios/${id}/desenvolvimento`);
     } catch (error) {
       console.error("Erro ao salvar objetivo:", error);
@@ -49,7 +53,7 @@ export default function RelatorioObjetivoScreen() {
       <View className="flex-1 px-5">
         <HeaderStack title="Seção 2 — Objetivo" />
 
-        <Warning text="✨ Texto base gerado automaticamente. Edite para personalizar os objetivos específicos." />
+        <Warning text={readOnly ? "🔒 Relatório submetido: somente leitura." : "✨ Texto base gerado automaticamente. Edite para personalizar os objetivos específicos."} />
 
         {isLoading ? (
           <View className="gap-4 pt-2">
@@ -59,12 +63,14 @@ export default function RelatorioObjetivoScreen() {
         ) : (
           <>
             <Input10
+              editable={!readOnly}
               label="OBJETIVO GERAL"
               value={objective}
               onChangeText={setObjective}
             />
 
             <Input10
+              editable={!readOnly}
               label="OBJETIVOS ESPECÍFICOS (OPCIONAL)"
               value={specificObjectives}
               onChangeText={setSpecificObjectives}

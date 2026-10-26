@@ -20,6 +20,10 @@ export default function DesenvolvimentoScreen() {
     () => getRelatorioById(id)
   );
 
+  // Relatório submetido ou corrigido não pode mais ser editado
+  const readOnly =
+    !!relatorio && ((relatorio as any)?.data ?? relatorio).status !== 'RASCUNHO';
+
   const [development, setDevelopment] = useState("");
 
   // Carrega o texto de desenvolvimento já salvo no relatório
@@ -33,7 +37,7 @@ export default function DesenvolvimentoScreen() {
   // Salva o desenvolvimento e volta para a visão geral do relatório
   async function handleNext() {
     try {
-      await updateRelatorioDevelopment(id, development);
+      if (!readOnly) await updateRelatorioDevelopment(id, development);
       router.push(`/relatorios/${id}/consideracoes`);
     } catch (error) {
       console.error("Erro ao salvar desenvolvimento:", error);
@@ -46,12 +50,13 @@ export default function DesenvolvimentoScreen() {
       <ScrollView>
         <View className="p-6 pt-0 gap-4 bg-[#f8fafc]">
           <HeaderStack title="Seção 3 — Desenvolvimento" />
-          <Warning text="📋 Gerado automaticamente dos seus registros. Edite o texto se desejar." />
+          <Warning text={readOnly ? "🔒 Relatório submetido: somente leitura." : "📋 Gerado automaticamente dos seus registros. Edite o texto se desejar."} />
 
           {isLoading ? (
             <Skeleton width="100%" height={240} radius={12} />
           ) : (
             <TextInput
+              editable={!readOnly}
               multiline
               numberOfLines={12}
               textAlignVertical="top"

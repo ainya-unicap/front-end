@@ -18,6 +18,10 @@ export default function RelatorioConsideracoesScreen() {
     () => getRelatorioById(id)
   );
 
+  // Relatório submetido ou corrigido não pode mais ser editado
+  const readOnly =
+    !!relatorio && ((relatorio as any)?.data ?? relatorio).status !== 'RASCUNHO';
+
   const [finalThoughts, setFinalThoughts] = useState('');
 
   useEffect(() => {
@@ -29,7 +33,7 @@ export default function RelatorioConsideracoesScreen() {
 
   const handleProximo = async () => {
     try {
-      await updateRelatorioFinalThoughts(id, finalThoughts);
+      if (!readOnly) await updateRelatorioFinalThoughts(id, finalThoughts);
       router.push(`/relatorios/${id}/referencias`);
     } catch (error) {
       Alert.alert("Erro", "Não foi possível salvar as considerações agora.");
@@ -43,7 +47,7 @@ export default function RelatorioConsideracoesScreen() {
       <View className="flex-1 px-5">
         <HeaderStack title="Seção 4 — Considerações Finais" />
 
-        <Warning text="✨ Texto base gerado automaticamente. Edite para personalizar suas conclusões e aprendizados." />
+        <Warning text={readOnly ? "🔒 Relatório submetido: somente leitura." : "✨ Texto base gerado automaticamente. Edite para personalizar suas conclusões e aprendizados."} />
 
         {isLoading ? (
           <View className="gap-4 pt-2">
@@ -51,6 +55,7 @@ export default function RelatorioConsideracoesScreen() {
           </View>
         ) : (
           <Input10
+              editable={!readOnly}
             label="CONSIDERAÇÕES FINAIS"
             value={finalThoughts}
             onChangeText={setFinalThoughts}

@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 
 import HeaderStack from "@/components/navigation/headerStack";
-import { getRelatorioById, submitRelatorio, exportRelatorioPDF } from "@/database/relatoriosService";
+import { extractApiError } from "@/lib/apiError";
+import { getRelatorioById, submitRelatorio } from "@/database/relatoriosService";
 
 export default function RelatorioIndexScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,7 +24,6 @@ export default function RelatorioIndexScreen() {
   );
 
   const [submitting, setSubmitting] = useState(false);
-  const [exporting, setExporting] = useState(false);
 
   const rel = (relatorio as any)?.data ?? relatorio;
   const canteiroNome =
@@ -31,28 +31,39 @@ export default function RelatorioIndexScreen() {
     rel?.list?.plant?.name ??
     `Canteiro ${id}`;
 
+  const status: string = rel?.status ?? 'RASCUNHO';
+  const emRascunho = status === 'RASCUNHO';
+
   const sectionStatus = (filled: boolean) => filled ? '✅' : '✏️';
 
-  async function handlePreviewPDF() {
-    try {
-      setExporting(true);
-      await exportRelatorioPDF(id);
-      Alert.alert("PDF gerado", "A pré-visualização do PDF foi gerada com sucesso.");
-    } catch (error) {
-      Alert.alert("Erro", "Não foi possível gerar o PDF agora.");
-    } finally {
-      setExporting(false);
-    }
+  function handlePreviewPDF() {
+    router.push(`/relatorios/${id}/pdf`);
   }
 
-  async function handleSubmit() {
+  function handleSubmit() {
+    Alert.alert(
+      "Submeter relatório?",
+      "Depois de submetido, o relatório não poderá mais ser editado.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Submeter", onPress: submeter },
+      ]
+    );
+  }
+
+  async function submeter() {
     try {
       setSubmitting(true);
       await submitRelatorio(id);
+      // Atualiza o detalhe e a lista de relatórios com o novo status
+      await Promise.all([mutate(`relatorio-${id}`), mutate("relatorios")]);
       Alert.alert("Relatório submetido", "Seu relatório foi enviado com sucesso.");
       router.back();
     } catch (error) {
-      Alert.alert("Erro", "Não foi possível submeter o relatório agora.");
+      Alert.alert(
+        "Erro",
+        extractApiError(error, "Não foi possível submeter o relatório agora.")
+      );
     } finally {
       setSubmitting(false);
     }
@@ -73,6 +84,35 @@ export default function RelatorioIndexScreen() {
           <ActivityIndicator color="#14532d" className="mt-10" />
         ) : (
           <View className="p-6 gap-4">
+            {!emRascunho ? (
+              <View className="bg-emerald-50 rounded-2xl p-6 gap-2">
+                <Text className="text-xs font-bold uppercase text-emerald-800">
+                  {status === 'CORRIGIDO' ? 'Relatório corrigido' : 'Relatório submetido'}
+                </Text>
+
+                {status === 'CORRIGIDO' && rel?.grade != null ? (
+                  <Text className="text-3xl font-bold text-green-900">
+                    Nota {Number(rel.grade).toFixed(1)}
+                  </Text>
+                ) : status === 'SUBMETIDO' ? (
+                  <Text className="text-sm text-slate-500">
+                    Aguardando a correção do professor.
+                  </Text>
+                ) : null}
+
+                {rel?.feedback ? (
+                  <View className="mt-2">
+                    <Text className="text-xs font-bold uppercase text-slate-400">
+                      Feedback do professor
+                    </Text>
+                    <Text className="mt-1 text-base leading-6 text-slate-700">
+                      {rel.feedback}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
             <View className="bg-gray-50 rounded-2xl p-6 w-full gap-8">
               <TouchableOpacity
                 className="flex-row justify-between w-full gap-2 items-center h-fit"
@@ -147,27 +187,24 @@ export default function RelatorioIndexScreen() {
 
             <TouchableOpacity
               className="border p-6 items-center rounded-2xl"
-              disabled={exporting}
               onPress={handlePreviewPDF}
             >
-              {exporting ? (
-                <ActivityIndicator color="#14532d" />
-              ) : (
-                <Text className="font-semibold">Pré-visualizar PDF</Text>
-              )}
+              <Text className="font-semibold">Visualizar PDF</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              className="bg-green-900 p-6 items-center rounded-2xl"
-              disabled={submitting}
-              onPress={handleSubmit}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-white font-semibold">Submeter Relatório</Text>
-              )}
-            </TouchableOpacity>
+            {emRascunho ? (
+              <TouchableOpacity
+                className="bg-green-900 p-6 items-center rounded-2xl"
+                disabled={submitting}
+                onPress={handleSubmit}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text className="text-white font-semibold">Submeter Relatório</Text>
+                )}
+              </TouchableOpacity>
+            ) : null}
           </View>
         )}
       </ScrollView>

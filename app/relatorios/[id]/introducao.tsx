@@ -18,6 +18,10 @@ export default function RelatorioIntroducaoScreen() {
     () => getRelatorioById(id)
   );
 
+  // Relatório submetido ou corrigido não pode mais ser editado
+  const readOnly =
+    !!relatorio && ((relatorio as any)?.data ?? relatorio).status !== 'RASCUNHO';
+
   const [introduction, setIntroduction] = useState('');
 
   useEffect(() => {
@@ -29,7 +33,7 @@ export default function RelatorioIntroducaoScreen() {
 
   const handleProximo = async () => {
     try {
-      await updateRelatorioIntroduction(id, introduction);
+      if (!readOnly) await updateRelatorioIntroduction(id, introduction);
       router.push(`/relatorios/${id}/objetivo`);
     } catch (error) {
       Alert.alert("Erro", "Não foi possível salvar a introdução agora.");
@@ -43,7 +47,7 @@ export default function RelatorioIntroducaoScreen() {
       <View className="flex-1 px-5">
         <HeaderStack title="Seção 1 — Introdução" />
 
-        <Warning text="✨ Texto base gerado automaticamente. Edite para personalizar o contexto e a justificativa." />
+        <Warning text={readOnly ? "🔒 Relatório submetido: somente leitura." : "✨ Texto base gerado automaticamente. Edite para personalizar o contexto e a justificativa."} />
 
         {isLoading ? (
           <View className="gap-4 pt-2">
@@ -51,6 +55,7 @@ export default function RelatorioIntroducaoScreen() {
           </View>
         ) : (
           <Input10
+              editable={!readOnly}
             label="INTRODUÇÃO"
             value={introduction}
             onChangeText={setIntroduction}
