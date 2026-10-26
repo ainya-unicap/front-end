@@ -5,6 +5,7 @@ type AnalysisTypeCardProps = {
   subtitle: string;
   icon: string;
   selected?: boolean;
+  disabled?: boolean;
   onPress?: () => void;
 };
 
@@ -13,12 +14,16 @@ export function AnalysisTypeCard({
   subtitle,
   icon,
   selected,
+  disabled,
   onPress,
 }: AnalysisTypeCardProps) {
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-1 rounded-2xl border p-4 active:opacity-80 ${
+      disabled={disabled}
+      className={`flex-1 rounded-2xl border p-4 ${
+        disabled ? "opacity-50" : "active:opacity-80"
+      } ${
         selected
           ? "border-emerald-700 bg-emerald-50"
           : "border-slate-200 bg-white"

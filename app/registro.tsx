@@ -25,12 +25,33 @@ import { getPlantTemplates } from "@/database/plantTemplates";
 import { FieldBox } from "@/components/registro/FieldBox";
 import { SectionCard } from "@/components/registro/SectionCard";
 import { ChecklistItem } from "@/components/registro/ChecklistItem";
-import { PhotoUploadBox } from "@/components/registro/PhotoUploadBox";
+import {
+  MAX_REGISTRO_PHOTOS,
+  MIN_REGISTRO_PHOTOS,
+  PhotoUploadBox,
+} from "@/components/registro/PhotoUploadBox";
 import type { SelectedPhoto } from "@/components/registro/PhotoUploadBox";
 import { extractApiError } from "@/lib/apiError";
 
 function hoje() {
   return new Date().toLocaleDateString("pt-BR");
+}
+
+function dataParaISOString(data: string) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(data);
+  if (!match) return null;
+
+  const [, dia, mes, ano] = match;
+  const parsedDate = new Date(Date.UTC(Number(ano), Number(mes) - 1, Number(dia)));
+  if (
+    parsedDate.getUTCFullYear() !== Number(ano) ||
+    parsedDate.getUTCMonth() !== Number(mes) - 1 ||
+    parsedDate.getUTCDate() !== Number(dia)
+  ) {
+    return null;
+  }
+
+  return parsedDate.toISOString();
 }
 
 export default function RegistroScreen() {
@@ -55,11 +76,13 @@ export default function RegistroScreen() {
   // Estados Visuais do Formulário
   const [date, setDate] = useState(hoje());
   const [week, setWeek] = useState("");
-  const [clima, setClima] = useState("");
-  const [fasePlanta, setFasePlanta] = useState("");
+  const [clima, setClima] = useState<"SOL" | "NUBLADO" | "CHUVA" | "">("");
+  const [fasePlanta, setFasePlanta] = useState<
+    "VEGETATIVO" | "ELONGACAO" | "FLORESCIMENTO" | ""
+  >("");
   const [alturaEstimada, setAlturaEstimada] = useState("");
   const [observations, setObservations] = useState("");
-  const [photo, setPhoto] = useState<SelectedPhoto | null>(null);
+  const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Checklist Fixo do MVP
@@ -108,27 +131,61 @@ export default function RegistroScreen() {
       return;
     }
 
+    if (photos.length < MIN_REGISTRO_PHOTOS || photos.length > MAX_REGISTRO_PHOTOS) {
+      Alert.alert(
+        "Quantidade de fotos inválida",
+        `Adicione no mínimo ${MIN_REGISTRO_PHOTOS} e no máximo ${MAX_REGISTRO_PHOTOS} fotos para salvar o registro.`
+      );
+      return;
+    }
+
     try {
+      const dataISO = dataParaISOString(date);
+      if (!dataISO) {
+        Alert.alert("Data inválida", "Informe uma data válida no formato dd/mm/aaaa.");
+        return;
+      }
+
+      const semana = week.trim() ? Number(week) : undefined;
+      if (semana !== undefined && (!Number.isInteger(semana) || semana < 1)) {
+        Alert.alert("Semana inválida", "Informe um número de semana válido.");
+        return;
+      }
+
+      const altura = alturaEstimada.trim() ? Number(alturaEstimada) : undefined;
+      if (altura !== undefined && (!Number.isFinite(altura) || altura < 0)) {
+        Alert.alert("Altura inválida", "Informe uma altura válida em centímetros.");
+        return;
+      }
+
       setSaving(true);
 
       const itensChecados = checklistFixo.filter((i) => i.checked);
-      const nomesChecklist = itensChecados.map((i) => i.label).join(", ");
-      
-      const observacoesFinais = `Clima: ${clima || "-"} | Fase: ${fasePlanta || "-"} | Altura: ${alturaEstimada ? alturaEstimada + " cm" : "-"}
-Checklist: ${nomesChecklist || "Nenhum"}
-
-Observações: ${observations}`;
+      const nomeCanteiro =
+        listaObj?.canteiro?.name ?? listaObj?.name ?? "Canteiro";
+      const title = `${semana ? `Semana ${semana}` : "Registro semanal"} — ${nomeCanteiro}`;
 
       const formulario = await createFormulario({
         list_id,
         type: "SEMANAL",
-        observations: observacoesFinais,
+        title,
+        date: dataISO,
+        ...(semana !== undefined ? { week: semana } : {}),
+        ...(clima ? { weather: clima } : {}),
+        ...(altura !== undefined ? { estimated_height_cm: altura } : {}),
+        ...(fasePlanta ? { phenological_stage: fasePlanta } : {}),
+        checklist_irrigacao: checklistFixo.find((i) => i.id === "irrigacao")?.checked ?? false,
+        checklist_capina: checklistFixo.find((i) => i.id === "limpeza")?.checked ?? false,
+        checklist_adubacao: checklistFixo.find((i) => i.id === "adubacao")?.checked ?? false,
+        checklist_plantio: checklistFixo.find((i) => i.id === "plantio")?.checked ?? false,
+        checklist_pragas: checklistFixo.find((i) => i.id === "pragas")?.checked ?? false,
+        observations,
       });
       const formularioId = formulario?.id ?? formulario?.data?.id;
 
       if (!formularioId) throw new Error("A API não retornou o ID do formulário criado.");
 
-      if (photo) {
+      for (const photo of photos) {
         await uploadFormularioPhoto(formularioId, photo);
       }
 
@@ -181,15 +238,19 @@ Observações: ${observations}`;
           </View>
           <Text className="mb-2 text-sm font-bold uppercase text-slate-600">Condições do Tempo</Text>
           <View className="flex-row justify-between gap-2">
-            {["Sol ☀️", "Nublado ☁️", "Chuva 🌧️"].map((opcao) => (
+            {[
+              { label: "Sol ☀️", value: "SOL" as const },
+              { label: "Nublado ☁️", value: "NUBLADO" as const },
+              { label: "Chuva 🌧️", value: "CHUVA" as const },
+            ].map((opcao) => (
               <TouchableOpacity
-                key={opcao}
-                onPress={() => setClima(opcao)}
+                key={opcao.value}
+                onPress={() => setClima(opcao.value)}
                 className={`flex-1 py-3 rounded-xl border items-center ${
-                  clima === opcao ? "bg-emerald-700 border-emerald-700" : "bg-slate-50 border-slate-300"
+                  clima === opcao.value ? "bg-emerald-700 border-emerald-700" : "bg-slate-50 border-slate-300"
                 }`}
               >
-                <Text className={`text-base ${clima === opcao ? "text-white font-bold" : "text-slate-700 font-medium"}`}>{opcao}</Text>
+                <Text className={`text-base ${clima === opcao.value ? "text-white font-bold" : "text-slate-700 font-medium"}`}>{opcao.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -207,9 +268,9 @@ Observações: ${observations}`;
           <Text className="mb-2 text-sm font-bold uppercase text-slate-600">Fase da planta (opcional)</Text>
           <View className="flex-row justify-between gap-2">
             {[
-              { id: 'Vegetativo 🌱', texto: 'Vegetativo', emoji: '🌱' },
-              { id: 'Elongação 🌿', texto: 'Elongação', emoji: '🌿' },
-              { id: 'Florescimento 🌷', texto: 'Florescimento', emoji: '🌷' }
+              { id: "VEGETATIVO" as const, texto: "Vegetativo", emoji: "🌱" },
+              { id: "ELONGACAO" as const, texto: "Elongação", emoji: "🌿" },
+              { id: "FLORESCIMENTO" as const, texto: "Florescimento", emoji: "🌷" },
             ].map((fase) => (
               <TouchableOpacity
                 key={fase.id}
@@ -236,7 +297,7 @@ Observações: ${observations}`;
 
         {/* FOTOS */}
         <SectionCard title="Registro Fotográfico" icon="📷">
-          <PhotoUploadBox photoBase64={photo?.base64} onPhotoSelected={setPhoto} />
+          <PhotoUploadBox photos={photos} onPhotosChange={setPhotos} />
         </SectionCard>
 
         {/* CHECKLIST FIXO MVP */}

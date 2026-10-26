@@ -100,6 +100,17 @@ export type CreateFormularioPayload = {
   list_id: string;
   user_id: string;
   type: "SEMANAL" | "DIARIO";
+  title: string;
+  date: string;
+  week?: number;
+  weather?: "SOL" | "NUBLADO" | "CHUVA";
+  estimated_height_cm?: number;
+  phenological_stage?: "VEGETATIVO" | "ELONGACAO" | "FLORESCIMENTO";
+  checklist_irrigacao: boolean;
+  checklist_capina: boolean;
+  checklist_adubacao: boolean;
+  checklist_plantio: boolean;
+  checklist_pragas: boolean;
   observations?: string;
 };
 
@@ -161,6 +172,17 @@ export async function finalizarFormulario(formularioId: string) {
 }
 
 export type FormularioCompleto = FormularioResumo & {
+  title?: string;
+  date?: string;
+  week?: number;
+  weather?: "SOL" | "NUBLADO" | "CHUVA";
+  estimated_height_cm?: number;
+  phenological_stage?: "VEGETATIVO" | "ELONGACAO" | "FLORESCIMENTO";
+  checklist_irrigacao?: boolean;
+  checklist_capina?: boolean;
+  checklist_adubacao?: boolean;
+  checklist_plantio?: boolean;
+  checklist_pragas?: boolean;
   observations: string;
   checklists?: {
     id: string;

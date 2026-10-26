@@ -21,13 +21,15 @@ import { SavedChecklistList } from "@/components/registro-salvo/SavedChecklistLi
 import { Skeleton } from "@/components/ui/Skeleton";
 
 function formatDateTimeRange(formulario: any) {
-  const start = formulario.started_at
-    ? new Date(formulario.started_at)
-    : new Date(formulario.createdAt);
+  const start = new Date(formulario.started_at || formulario.createdAt);
+  const recordDate = new Date(
+    formulario.date || formulario.started_at || formulario.createdAt
+  );
+  const displayDate = Number.isNaN(recordDate.getTime()) ? start : recordDate;
 
   const end = formulario.ended_at ? new Date(formulario.ended_at) : null;
 
-  const date = start.toLocaleDateString("pt-BR", {
+  const date = displayDate.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -56,6 +58,48 @@ function getMeasurementValue(formulario: any, keyword: string) {
   if (!measurement) return "—";
 
   return `${measurement.value}${measurement.template?.unit || ""}`;
+}
+
+const checklistFields = [
+  { key: "checklist_irrigacao", label: "Irrigação realizada" },
+  { key: "checklist_capina", label: "Limpeza / Capina" },
+  { key: "checklist_adubacao", label: "Adubação de cobertura" },
+  { key: "checklist_plantio", label: "Plantio / Replantio" },
+  { key: "checklist_pragas", label: "Controle de pragas" },
+] as const;
+
+function getChecklistItems(formulario: any) {
+  const hasNewChecklist = checklistFields.some(
+    ({ key }) => typeof formulario[key] === "boolean"
+  );
+
+  if (!hasNewChecklist) return formulario.checklists || [];
+
+  return checklistFields.map(({ key, label }) => ({
+    id: key,
+    checked: formulario[key] === true,
+    template: { field_name: label },
+  }));
+}
+
+function getWeatherLabel(weather?: string) {
+  return (
+    {
+      SOL: "Sol",
+      NUBLADO: "Nublado",
+      CHUVA: "Chuva",
+    }[weather ?? ""] ?? weather ?? "—"
+  );
+}
+
+function getPhenologicalStageLabel(stage?: string) {
+  return (
+    {
+      VEGETATIVO: "Vegetativo",
+      ELONGACAO: "Elongação",
+      FLORESCIMENTO: "Florescimento",
+    }[stage ?? ""] ?? stage ?? "—"
+  );
 }
 
 export default function RegistroSalvoScreen() {
@@ -114,12 +158,23 @@ export default function RegistroSalvoScreen() {
     );
   }
 
-  const altura = getMeasurementValue(formulario, "altura");
+  const altura =
+    formulario.estimated_height_cm != null
+      ? `${formulario.estimated_height_cm} cm`
+      : getMeasurementValue(formulario, "altura");
   const cobertura = getMeasurementValue(formulario, "cobertura");
   const totalFotos = formulario.photos?.length || 0;
-  const totalChecklist = formulario.checklists?.length || 0;
+  const checklistItems = getChecklistItems(formulario);
+  const totalChecklist = checklistItems.length;
   const totalChecklistChecked =
-    formulario.checklists?.filter((item: any) => item.checked).length || 0;
+    checklistItems.filter((item: any) => item.checked).length || 0;
+  const measurements =
+    formulario.estimated_height_cm != null
+      ? (formulario.measurements || []).filter(
+          (measurement: any) =>
+            !measurement.template?.field_name?.toLowerCase().includes("altura")
+        )
+      : formulario.measurements || [];
 
   return (
     <View className="flex-1 bg-slate-50">
@@ -165,14 +220,33 @@ export default function RegistroSalvoScreen() {
         </SavedSectionCard>
 
         <SavedSectionCard title="Medições" icon="📏">
-          <MeasurementList measurements={formulario.measurements || []} />
+          <MeasurementList measurements={measurements} />
+        </SavedSectionCard>
+
+        <SavedSectionCard title="Dados do registro" icon="🌱">
+          {[
+            ["Título", formulario.title],
+            ["Semana", formulario.week != null ? String(formulario.week) : "—"],
+            ["Clima", getWeatherLabel(formulario.weather)],
+            ["Fase da planta", getPhenologicalStageLabel(formulario.phenological_stage)],
+          ].map(([label, value]) => (
+            <View
+              key={label}
+              className="flex-row items-center justify-between border-b border-slate-100 py-3"
+            >
+              <Text className="flex-1 text-base text-slate-500">{label}</Text>
+              <Text className="flex-1 text-right text-base font-bold text-emerald-950">
+                {value || "—"}
+              </Text>
+            </View>
+          ))}
         </SavedSectionCard>
 
         <SavedSectionCard
           title={`Checklist (${totalChecklistChecked}/${totalChecklist})`}
           icon="✅"
         >
-          <SavedChecklistList items={formulario.checklists || []} />
+          <SavedChecklistList items={checklistItems} />
         </SavedSectionCard>
 
         <SavedSectionCard title="Observações" icon="📝">
