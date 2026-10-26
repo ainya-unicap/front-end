@@ -11,11 +11,10 @@ import {
 import { router } from "expo-router";
 import useSWR, { mutate } from "swr";
 
-import { getPlantas } from "@/database/plantasForrageiras";
-import { getUserTurmas } from "@/database/turmas";
+import { getPlantas, type SemesterFocus } from "@/database/plantasForrageiras";
+import { getProfile } from "@/database/user";
 import { createCanteiro } from "@/database/canteiros";
-import { createListaFormulario } from "@/database/listasFormularios";
-import { getUserId } from "@/database/auth";
+import { extractApiError } from "@/lib/apiError";
 
 import HeaderStack from "@/components/navigation/headerStack";
 import Warning from "@/components/forms/warning";
@@ -44,7 +43,7 @@ const CATEGORY_ICON: Record<string, string> = {
 function mapPlanta(planta: any): PlantOption {
   return {
     id: String(planta.id),
-    name: planta.nome_comum ?? planta.name ?? "Planta",
+    name: planta.name ?? "Planta",
     icon: CATEGORY_ICON[planta.category] ?? "🌱",
   };
 }
@@ -54,6 +53,8 @@ type AnalysisType = {
   title: string;
   subtitle: string;
   icon: string;
+  // Filtra o catálogo de plantas (plantas com foco AMBOS aparecem nos dois)
+  semesterFocus: SemesterFocus;
 };
 
 const ANALYSIS_TYPES: AnalysisType[] = [
@@ -62,52 +63,52 @@ const ANALYSIS_TYPES: AnalysisType[] = [
     title: "1º Semestre",
     subtitle: "Cultivar, manejar e caracterizar",
     icon: "🌱",
+    semesterFocus: "PRIMEIRO",
   },
   {
     id: "2-semestre",
     title: "2º Semestre",
     subtitle: "Fatores ecológicos",
     icon: "🌍",
+    semesterFocus: "SEGUNDO",
   },
 ];
 
 export default function NovaListaScreen() {
-  // Catálogo de plantas e turmas vindos da API
-  const { data: plantasData, isLoading: loadingPlantas } = useSWR(
-    "plantas",
-    () => getPlantas()
-  );
-  const { data: turmasData } = useSWR("user-turmas", () => getUserTurmas());
-
-  const plantasArr = Array.isArray(plantasData)
-    ? plantasData
-    : (plantasData?.data ?? []);
-  const turmasArr = Array.isArray(turmasData)
-    ? turmasData
-    : (turmasData?.data ?? []);
-
-  const plantas: PlantOption[] = plantasArr.map(mapPlanta);
-  // getUserTurmas devolve vínculos aluno-turma; extraímos o nome de forma tolerante
-  const turmas: { id: string; nome: string }[] = turmasArr.map(
-    (t: any) => ({
-      id: String(t.turma?.id ?? t.turma_id ?? t.id),
-      nome: t.turma?.name ?? t.name ?? "Turma",
-    })
-  );
-
   const [plantId, setPlantId] = useState<string>("");
   const [analysisTypeId, setAnalysisTypeId] = useState<string>(
     ANALYSIS_TYPES[0].id
   );
   const [nomeCanteiro, setNomeCanteiro] = useState("");
-  const [periodoLetivo, setPeriodoLetivo] = useState("2026.1");
-  const [turma, setTurma] = useState<string | null>(null);
-  const [turmaOpen, setTurmaOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Seleciona a primeira planta assim que o catálogo carrega
+  const semesterFocus = ANALYSIS_TYPES.find(
+    (type) => type.id === analysisTypeId
+  )?.semesterFocus;
+
+  // Catálogo de plantas filtrado pelo tipo de análise (semestre)
+  const {
+    data: plantasData,
+    isLoading: loadingPlantas,
+    error: plantasError,
+  } = useSWR(["plantas", semesterFocus], () =>
+    getPlantas(undefined, semesterFocus)
+  );
+  const plantas: PlantOption[] = (
+    Array.isArray(plantasData) ? plantasData : (plantasData?.data ?? [])
+  ).map(mapPlanta);
+
+  // Período letivo e turma vêm do perfil do aluno; são informativos e opcionais
+  const { data: perfilResp } = useSWR("perfil", () => getProfile());
+  const perfil = (perfilResp as any)?.data ?? perfilResp;
+  const periodoLetivo: string = perfil?.academic_period?.name ?? "";
+  const turma: string = perfil?.turma?.name ?? "";
+
+  // Mantém a seleção válida: ao trocar de semestre a lista muda, então
+  // seleciona a primeira planta se a atual não está mais no catálogo
   useEffect(() => {
-    if (!plantId && plantas.length > 0) {
+    if (plantas.length === 0) return;
+    if (!plantas.some((plant) => plant.id === plantId)) {
       setPlantId(plantas[0].id);
     }
   }, [plantas, plantId]);
@@ -125,23 +126,15 @@ export default function NovaListaScreen() {
     try {
       setSaving(true);
 
-      // 1) cria o canteiro vinculado ao usuário logado e à planta escolhida
-      const canteiro = await createCanteiro({
+      // Uma chamada só: o backend cria canteiro, vínculo com o usuário do
+      // token e lista de formulários numa transação
+      await createCanteiro({
         plant_id: plantId,
         name: nomeCanteiro.trim(),
-        user_id: getUserId() ?? undefined,
-      });
-      const canteiroId =
-        canteiro?.id ?? canteiro?.data?.id ?? canteiro?.canteiro?.id;
-
-      // 2) cria a lista de formulários vinculada ao canteiro
-      await createListaFormulario({
-        canteiro_id: canteiroId,
-        name: nomeCanteiro.trim(),
       });
 
-      // 3) revalida o cache da lista de canteiros (telas Canteiros e Novo relatório)
-      await mutate("user-canteiros");
+      // Revalida canteiros (telas Canteiros e Novo relatório) e a home
+      await Promise.all([mutate("user-canteiros"), mutate("home")]);
 
       Alert.alert("Pronto!", "Lista de formulários criada com sucesso.");
       router.back();
@@ -149,7 +142,10 @@ export default function NovaListaScreen() {
       console.error("Erro ao criar lista de formulários:", error);
       Alert.alert(
         "Erro ao criar",
-        "Não foi possível criar a lista de formulários agora."
+        extractApiError(
+          error,
+          "Não foi possível criar a lista de formulários agora."
+        )
       );
     } finally {
       setSaving(false);
@@ -172,6 +168,12 @@ export default function NovaListaScreen() {
 
         {loadingPlantas ? (
           <ActivityIndicator color="#065f46" className="mb-6" />
+        ) : plantasError || plantas.length === 0 ? (
+          <Text className="mb-6 text-sm text-slate-400">
+            {plantasError
+              ? "Não foi possível carregar as plantas."
+              : "Nenhuma planta disponível para este semestre."}
+          </Text>
         ) : (
           <ScrollView
             horizontal
@@ -230,56 +232,21 @@ export default function NovaListaScreen() {
           <LabeledField label="Período letivo">
             <TextInput
               value={periodoLetivo}
-              onChangeText={setPeriodoLetivo}
-              placeholder="2026.1"
+              editable={false}
+              placeholder="Opcional — defina no perfil"
               placeholderTextColor="#94a3b8"
               className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
             />
           </LabeledField>
 
           <LabeledField label="Turma">
-            <Pressable
-              onPress={() => setTurmaOpen((open) => !open)}
-              className="flex-row items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 active:opacity-80"
-            >
-              <Text
-                className={`text-base ${
-                  turma ? "text-slate-700" : "text-slate-400"
-                }`}
-              >
-                {turma || "Selecionar turma"}
-              </Text>
-              <Text className="text-slate-400">▾</Text>
-            </Pressable>
-
-            {turmaOpen && (
-              <View className="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                {turmas.length === 0 ? (
-                  <Text className="px-4 py-3 text-base text-slate-400">
-                    Nenhuma turma vinculada
-                  </Text>
-                ) : (
-                  turmas.map((option, index) => (
-                    <Pressable
-                      key={option.id}
-                      onPress={() => {
-                        setTurma(option.nome);
-                        setTurmaOpen(false);
-                      }}
-                      className={`px-4 py-3 active:bg-slate-50 ${
-                        index < turmas.length - 1
-                          ? "border-b border-slate-100"
-                          : ""
-                      }`}
-                    >
-                      <Text className="text-base text-slate-700">
-                        {option.nome}
-                      </Text>
-                    </Pressable>
-                  ))
-                )}
-              </View>
-            )}
+            <TextInput
+              value={turma}
+              editable={false}
+              placeholder="Opcional — defina no perfil"
+              placeholderTextColor="#94a3b8"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
+            />
           </LabeledField>
         </View>
 

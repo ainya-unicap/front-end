@@ -2,6 +2,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import useSWR from "swr";
 import { getCanteirosByUser } from "@/database/canteiros";
+import { getProfile } from "@/database/user";
 import { CanteiroCard } from "@/components/canteiros/CanteiroCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -31,20 +32,34 @@ const getCategoryIcon = (category: string): string => {
 };
 
 const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
-  const totalRegistros = canteiro.listaDeFormularios?.[0]?._count?.formularios ?? 0;
-  const lastFormulario = canteiro.listaDeFormularios?.[0]?.formularios?.[0];
-  
-  const lastRecord = lastFormulario?.createdAt 
-    ? new Date(lastFormulario.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  const listas: any[] = canteiro.listaDeFormularios ?? [];
+
+  // Soma os registros de todas as listas do canteiro
+  const totalRegistros = listas.reduce(
+    (sum, lista) => sum + (lista._count?.formularios ?? 0),
+    0
+  );
+
+  // Data do registro mais recente entre todas as listas
+  const datas = listas
+    .map((lista) => lista.formularios?.[0]?.date)
+    .filter(Boolean)
+    .map((raw: string) => new Date(raw))
+    .filter((d: Date) => !Number.isNaN(d.getTime()));
+  const ultimo = datas.length
+    ? new Date(Math.max(...datas.map((d: Date) => d.getTime())))
+    : null;
+  const lastRecord = ultimo
+    ? ultimo.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
     : '—';
-  
+
   const progress = totalRegistros > 0 ? Math.min(100, (totalRegistros / 20) * 100) : 0;
-  
+
   return {
     id: canteiro.id,
     icon: getCategoryIcon(canteiro.plant?.category),
-    name: canteiro.plant?.name || 'Canteiro',
-    description: canteiro.plant?.category || 'Planta',
+    name: canteiro.name || canteiro.plant?.name || 'Canteiro',
+    description: canteiro.plant?.name || 'Planta',
     totalRegistros,
     lastRecord,
     status: canteiro.status || 'ATIVO',
@@ -54,6 +69,9 @@ const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
 
 export default function CanteirosScreen() {
   const { data: canteiros, error, isLoading } = useSWR('user-canteiros', getCanteirosByUser);
+  // Período letivo do cabeçalho vem do perfil do aluno
+  const { data: perfilResp } = useSWR('perfil', () => getProfile());
+  const perfil = (perfilResp as any)?.data ?? perfilResp;
 
   const lista = Array.isArray(canteiros) ? canteiros : (canteiros?.data ?? []);
   const mappedCanteiros: CanteiroItem[] = lista.map(mapCanteiroToCanteiro);
@@ -69,7 +87,9 @@ export default function CanteirosScreen() {
           <Text className="text-2xl font-bold text-emerald-900">
             Meu Canteiro
           </Text>
-          <Text className="text-sm font-semibold text-slate-400">2026.1</Text>
+          <Text className="text-sm font-semibold text-slate-400">
+            {perfil?.academic_period?.name ?? ''}
+          </Text>
         </View>
 
         {isLoading ? (

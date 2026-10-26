@@ -10,9 +10,14 @@ export type PlantCategory =
     | 'LEGUMINOSA_HERBACEA' 
     | 'OLEAGINOSA_FORRAGEIRA';
 
-export async function getPlantas(category?: PlantCategory) {
+export type SemesterFocus = 'PRIMEIRO' | 'SEGUNDO';
+
+export async function getPlantas(category?: PlantCategory, semesterFocus?: SemesterFocus) {
     try {
-        const params = category ? { category } : {};
+        const params = {
+            ...(category ? { category } : {}),
+            ...(semesterFocus ? { semester_focus: semesterFocus } : {}),
+        };
         const response = await api.get('plantas-forrageiras', { params });
         return response.data;
     } catch (error) {
