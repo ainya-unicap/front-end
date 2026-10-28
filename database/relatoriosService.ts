@@ -1,3 +1,6 @@
+import * as FileSystem from "expo-file-system/legacy";
+
+import { getAccessToken } from "./auth";
 import { api } from "./index";
 
 export async function generateRelatorio(data: { list_id: string }) {
@@ -6,6 +9,15 @@ export async function generateRelatorio(data: { list_id: string }) {
         return response.data;
     } catch (error) {
         console.error('Error generating relatorio:', error);
+        throw error;
+    }
+}
+
+export async function generateRelatorioComAnalise(canteiroId: string) {
+    try {
+        return await api.post(`canteiros/${canteiroId}/relatorio-ia`);
+    } catch (error) {
+        console.error('Error generating relatorio com analise:', error);
         throw error;
     }
 }
@@ -96,14 +108,26 @@ export async function submitRelatorio(id: string) {
     }
 }
 
-export async function exportRelatorioPDF(id: string) {
+// Baixa o PDF do relatório (com o token da sessão) para o cache do app e
+// devolve o caminho local do arquivo, pronto para visualizar ou compartilhar.
+export async function downloadRelatorioPDF(id: string): Promise<string> {
     try {
-        const response = await api.get(`relatorios/${id}/export-pdf`, {
-            responseType: 'blob'
-        });
-        return response.data;
+        const token = getAccessToken();
+        const destination = `${FileSystem.cacheDirectory}relatorio-${id}.pdf`;
+
+        const result = await FileSystem.downloadAsync(
+            `${api.defaults.baseURL}relatorios/${id}/export-pdf`,
+            destination,
+            { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        );
+
+        if (result.status !== 200) {
+            throw new Error(`Falha ao baixar o PDF (HTTP ${result.status}).`);
+        }
+
+        return result.uri;
     } catch (error) {
-        console.error('Error exporting relatorio to PDF:', error);
+        console.error('Error downloading relatorio PDF:', error);
         throw error;
     }
 }

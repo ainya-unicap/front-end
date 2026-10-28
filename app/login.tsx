@@ -1,23 +1,45 @@
+import { StatusBar } from "expo-status-bar";
+import { Text, View, Image } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
-import { StyleSheet, View, Text } from 'react-native';
-import { useNavigation } from 'expo-router';
+import { LoginForm } from "@/components/auth/LoginForm";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import FormLogin from '@/components/forms/formLogin';
-import { StatusBar } from 'expo-status-bar';
-
-export default function ModalScreen() {
-  const router = useNavigation();
-  
+export default function LoginScreen() {
   return (
-    <View className='flex-1 items-center justify-center bg-green-900'>
-      <View className='items-center flex-1 justify-center'>
-        <Text className='text-2xl font-semibold text-white'>Forrage App</Text>
-        <Text className='text-white'>Acompanhamento de plantas forrageiras</Text>
-      </View>
-      <FormLogin/>
+    <View className="flex-1 bg-[#124B33]">
       <StatusBar style="light" />
+
+      <View className="flex-1 items-center justify-center pb-96 px-8">
+        
+        <Image
+          source={require("@/assets/images/logo-splash.png")} 
+          className="h-64 w-64" 
+          resizeMode="contain"
+        />
+
+        <Text className="-mt-12 text-center text-4xl font-extrabold tracking-tight text-white">
+          Forrageia
+        </Text>
+
+      </View>
+
+      <View
+        className="absolute inset-0"
+        pointerEvents="box-none"
+      >
+        <KeyboardAwareScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "flex-end",
+          }}
+          bottomOffset={40}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <LoginForm />
+        </KeyboardAwareScrollView>
+      </View>
     </View>
   );
 }

@@ -23,7 +23,7 @@ export function SuccessCard({ title, subtitle, synced }: SuccessCardProps) {
 
       <View className="mt-4 rounded-full bg-emerald-500 px-4 py-2">
         <Text className="text-xs font-bold text-white">
-          {synced ? "☁️ Sincronizado" : "⚠️ Pendente"}
+          {synced ? "✅ Registro completo" : "⚠️ Registro incompleto"}
         </Text>
       </View>
     </View>

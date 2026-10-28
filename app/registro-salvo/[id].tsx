@@ -10,7 +10,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import useSWR from "swr";
 
-import { getFormularioById, syncFormulario } from "@/database/formularios";
+import { finalizarFormulario, getFormularioById } from "@/database/formularios";
 
 import { SuccessCard } from "@/components/registro-salvo/SuccessCard";
 import { SummaryMetricCard } from "@/components/registro-salvo/SummaryMetricCard";
@@ -21,13 +21,15 @@ import { SavedChecklistList } from "@/components/registro-salvo/SavedChecklistLi
 import { Skeleton } from "@/components/ui/Skeleton";
 
 function formatDateTimeRange(formulario: any) {
-  const start = formulario.started_at
-    ? new Date(formulario.started_at)
-    : new Date(formulario.createdAt);
+  const start = new Date(formulario.started_at || formulario.createdAt);
+  const recordDate = new Date(
+    formulario.date || formulario.started_at || formulario.createdAt
+  );
+  const displayDate = Number.isNaN(recordDate.getTime()) ? start : recordDate;
 
   const end = formulario.ended_at ? new Date(formulario.ended_at) : null;
 
-  const date = start.toLocaleDateString("pt-BR", {
+  const date = displayDate.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -58,6 +60,48 @@ function getMeasurementValue(formulario: any, keyword: string) {
   return `${measurement.value}${measurement.template?.unit || ""}`;
 }
 
+const checklistFields = [
+  { key: "checklist_irrigacao", label: "Irrigação realizada" },
+  { key: "checklist_capina", label: "Limpeza / Capina" },
+  { key: "checklist_adubacao", label: "Adubação de cobertura" },
+  { key: "checklist_plantio", label: "Plantio / Replantio" },
+  { key: "checklist_pragas", label: "Controle de pragas" },
+] as const;
+
+function getChecklistItems(formulario: any) {
+  const hasNewChecklist = checklistFields.some(
+    ({ key }) => typeof formulario[key] === "boolean"
+  );
+
+  if (!hasNewChecklist) return formulario.checklists || [];
+
+  return checklistFields.map(({ key, label }) => ({
+    id: key,
+    checked: formulario[key] === true,
+    template: { field_name: label },
+  }));
+}
+
+function getWeatherLabel(weather?: string) {
+  return (
+    {
+      SOL: "Sol",
+      NUBLADO: "Nublado",
+      CHUVA: "Chuva",
+    }[weather ?? ""] ?? weather ?? "—"
+  );
+}
+
+function getPhenologicalStageLabel(stage?: string) {
+  return (
+    {
+      VEGETATIVO: "Vegetativo",
+      ELONGACAO: "Elongação",
+      FLORESCIMENTO: "Florescimento",
+    }[stage ?? ""] ?? stage ?? "—"
+  );
+}
+
 export default function RegistroSalvoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -70,27 +114,28 @@ export default function RegistroSalvoScreen() {
   // A API pode devolver o objeto direto ou embrulhado em { data: {...} }
   const formulario = (formularioResp as any)?.data ?? formularioResp;
 
-  const [syncing, setSyncing] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
 
   const subtitle = useMemo(
     () => (formulario ? formatDateTimeRange(formulario) : ""),
     [formulario]
   );
 
-  async function handleSync() {
+  // Registro incompleto (envio interrompido): marca como completo no servidor
+  async function handleFinalizar() {
     try {
-      setSyncing(true);
-      await syncFormulario(String(id));
+      setFinalizing(true);
+      await finalizarFormulario(String(id));
       await mutate();
-      Alert.alert("Sincronizado", "Registro sincronizado com sucesso.");
+      Alert.alert("Pronto", "Registro marcado como completo.");
     } catch (error) {
-      console.log("Erro ao sincronizar:", error);
+      console.log("Erro ao finalizar:", error);
       Alert.alert(
-        "Não sincronizado",
-        "Não foi possível sincronizar agora. Tente novamente depois."
+        "Não foi possível finalizar",
+        "Verifique sua conexão e tente novamente."
       );
     } finally {
-      setSyncing(false);
+      setFinalizing(false);
     }
   }
 
@@ -114,12 +159,23 @@ export default function RegistroSalvoScreen() {
     );
   }
 
-  const altura = getMeasurementValue(formulario, "altura");
+  const altura =
+    formulario.estimated_height_cm != null
+      ? `${formulario.estimated_height_cm} cm`
+      : getMeasurementValue(formulario, "altura");
   const cobertura = getMeasurementValue(formulario, "cobertura");
   const totalFotos = formulario.photos?.length || 0;
-  const totalChecklist = formulario.checklists?.length || 0;
+  const checklistItems = getChecklistItems(formulario);
+  const totalChecklist = checklistItems.length;
   const totalChecklistChecked =
-    formulario.checklists?.filter((item: any) => item.checked).length || 0;
+    checklistItems.filter((item: any) => item.checked).length || 0;
+  const measurements =
+    formulario.estimated_height_cm != null
+      ? (formulario.measurements || []).filter(
+          (measurement: any) =>
+            !measurement.template?.field_name?.toLowerCase().includes("altura")
+        )
+      : formulario.measurements || [];
 
   return (
     <View className="flex-1 bg-slate-50">
@@ -165,14 +221,33 @@ export default function RegistroSalvoScreen() {
         </SavedSectionCard>
 
         <SavedSectionCard title="Medições" icon="📏">
-          <MeasurementList measurements={formulario.measurements || []} />
+          <MeasurementList measurements={measurements} />
+        </SavedSectionCard>
+
+        <SavedSectionCard title="Dados do registro" icon="🌱">
+          {[
+            ["Título", formulario.title],
+            ["Semana", formulario.week != null ? String(formulario.week) : "—"],
+            ["Clima", getWeatherLabel(formulario.weather)],
+            ["Fase da planta", getPhenologicalStageLabel(formulario.phenological_stage)],
+          ].map(([label, value]) => (
+            <View
+              key={label}
+              className="flex-row items-center justify-between border-b border-slate-100 py-3"
+            >
+              <Text className="flex-1 text-base text-slate-500">{label}</Text>
+              <Text className="flex-1 text-right text-base font-bold text-emerald-950">
+                {value || "—"}
+              </Text>
+            </View>
+          ))}
         </SavedSectionCard>
 
         <SavedSectionCard
           title={`Checklist (${totalChecklistChecked}/${totalChecklist})`}
           icon="✅"
         >
-          <SavedChecklistList items={formulario.checklists || []} />
+          <SavedChecklistList items={checklistItems} />
         </SavedSectionCard>
 
         <SavedSectionCard title="Observações" icon="📝">
@@ -191,17 +266,21 @@ export default function RegistroSalvoScreen() {
             </Text>
           </Pressable>
 
-          <Pressable
-            onPress={handleSync}
-            disabled={syncing}
-            className="h-14 flex-1 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
-          >
-            {syncing ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text className="text-base font-bold text-white">Sincronizar</Text>
-            )}
-          </Pressable>
+          {!formulario.synced ? (
+            <Pressable
+              onPress={handleFinalizar}
+              disabled={finalizing}
+              className="h-14 flex-1 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
+            >
+              {finalizing ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text className="text-base font-bold text-white">
+                  Finalizar registro
+                </Text>
+              )}
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
     </View>

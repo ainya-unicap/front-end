@@ -18,6 +18,10 @@ export default function RelatorioReferenciasScreen() {
     () => getRelatorioById(id)
   );
 
+  // Relatório submetido ou corrigido não pode mais ser editado
+  const readOnly =
+    !!relatorio && ((relatorio as any)?.data ?? relatorio).status !== 'RASCUNHO';
+
   const [references, setReferences] = useState('');
 
   useEffect(() => {
@@ -29,7 +33,7 @@ export default function RelatorioReferenciasScreen() {
 
   const handleProximo = async () => {
     try {
-      await updateRelatorioReferences(id, references);
+      if (!readOnly) await updateRelatorioReferences(id, references);
       router.push(`/relatorios/${id}`);
     } catch (error) {
       Alert.alert("Erro", "Não foi possível salvar as referências agora.");
@@ -43,7 +47,7 @@ export default function RelatorioReferenciasScreen() {
       <View className="flex-1 px-5">
         <HeaderStack title="Seção 5 — Referências Bibliográficas" />
 
-        <Warning text="📚 Liste as fontes consultadas durante o acompanhamento. Uma por linha." />
+        <Warning text={readOnly ? "🔒 Relatório submetido: somente leitura." : "📚 Liste as fontes consultadas durante o acompanhamento. Uma por linha."} />
 
         {isLoading ? (
           <View className="gap-4 pt-2">
@@ -51,6 +55,7 @@ export default function RelatorioReferenciasScreen() {
           </View>
         ) : (
           <Input10
+              editable={!readOnly}
             label="REFERÊNCIAS BIBLIOGRÁFICAS"
             value={references}
             onChangeText={setReferences}

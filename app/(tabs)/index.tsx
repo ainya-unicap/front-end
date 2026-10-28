@@ -1,66 +1,38 @@
-import { useMemo } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import useSWR from "swr";
+import { StatusBar } from "expo-status-bar";
 
-import { getFormulariosByUser } from "@/database/formularios";
-import { getRelatorios } from "@/database/relatorios";
-import { type AlunoResumo, type FormularioResumo } from "@/services/api";
+import { getAlunoHome } from "@/database/alunos";
+import { getProfile } from "@/database/user";
+import { type AlunoResumo } from "@/services/api";
 
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { QuickActionCard } from "@/components/home/QuickActionCard";
 import { RecentRecordCard } from "@/components/home/RecentRecordCard";
-import { BottomNavbar } from "@/components/navigation/BottomNavbar";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-// Extrai um array independentemente do formato que a API devolver
-// (array puro, { data: [...] }, { formularios: [...] }, etc.)
-function toArray(value: any): any[] {
-  if (Array.isArray(value)) return value;
-  if (Array.isArray(value?.data)) return value.data;
-  if (Array.isArray(value?.formularios)) return value.formularios;
-  if (Array.isArray(value?.relatorios)) return value.relatorios;
-  if (Array.isArray(value?.items)) return value.items;
-  return [];
-}
-
-// Chave de "semana" de um formulário (usada para contar semanas distintas)
-function weekKey(formulario: any): string {
-  if (formulario.semana != null) return String(formulario.semana);
-  const raw = formulario.createdAt ?? formulario.data_preenchimento ?? "";
-  return String(raw).slice(0, 10);
-}
-
 export default function HomeScreen() {
-  const { data: formulariosData, isLoading: loadingForms } = useSWR(
-    "home-formularios",
-    getFormulariosByUser
-  );
-  const { data: relatoriosData, isLoading: loadingRel } = useSWR(
-    "home-relatorios",
-    getRelatorios
-  );
+  // Uma única chamada (GET /alunos/:userId/home) traz totais e registros recentes
+  const { data: home, isLoading: loading, error } = useSWR("home", getAlunoHome);
+  // Mesma chave do perfil: o nome fica em cache compartilhado entre as telas
+  const { data: perfilResp } = useSWR("perfil", () => getProfile());
+  const perfil = (perfilResp as any)?.data ?? perfilResp;
+  const primeiroNome = perfil?.name?.trim().split(/\s+/)[0];
 
-  const loading = loadingForms || loadingRel;
+  const resumo: AlunoResumo = {
+    total_formularios: home?.total_formularios ?? 0,
+    total_semanas: home?.total_semanas ?? 0,
+    total_relatorios: home?.total_relatorios ?? 0,
+  };
 
-  const formularios = toArray(formulariosData) as FormularioResumo[];
-  const relatorios = toArray(relatoriosData);
-
-  // Estatísticas derivadas dos dados reais do aluno
-  const resumo: AlunoResumo = useMemo(
-    () => ({
-      total_formularios: formularios.length,
-      total_semanas: new Set(formularios.map(weekKey)).size,
-      total_relatorios: relatorios.length,
-    }),
-    [formularios, relatorios]
-  );
-
-  const registrosRecentes = formularios.slice(0, 3);
+  // A API já devolve os formulários ordenados do mais recente para o mais antigo
+  const registrosRecentes = (home?.formularios_recentes ?? []).slice(0, 2);
 
   return (
     <View className="flex-1 bg-slate-50">
-      <HomeHeader resumo={resumo} />
+      <StatusBar style="dark" />
+      <HomeHeader resumo={resumo} nomeUsuario={primeiroNome} />
 
       <ScrollView
         className="flex-1"
@@ -88,7 +60,7 @@ export default function HomeScreen() {
 
           <QuickActionCard
             icon="📄"
-            title="Relatório"
+            title="Resumo" // Palavra alterada conforme solicitado
             subtitle="Gerar ou editar"
             onPress={() => router.push("/relatorios")}
           />
@@ -108,7 +80,7 @@ export default function HomeScreen() {
         <View className="lg:flex-row gap-2 lg:flex-wrap">
           {loading ? (
             <View className="gap-3">
-              {[0, 1, 2].map((i) => (
+              {[0, 1].map((i) => (
                 <View
                   key={i}
                   className="flex-row items-center rounded-2xl bg-white px-4 py-4"
@@ -121,13 +93,22 @@ export default function HomeScreen() {
                 </View>
               ))}
             </View>
+          ) : error ? (
+            <View className="items-center rounded-2xl bg-white p-8">
+              <Text className="text-base font-semibold text-slate-500">
+                Não foi possível carregar seus registros
+              </Text>
+              <Text className="mt-1 text-sm text-slate-400">
+                Verifique sua conexão e tente novamente
+              </Text>
+            </View>
           ) : registrosRecentes.length === 0 ? (
             <View className="items-center rounded-2xl bg-white p-8">
               <Text className="text-base font-semibold text-slate-500">
-                Nenhum registro ainda
+                Não há relatórios
               </Text>
               <Text className="mt-1 text-sm text-slate-400">
-                Crie seu primeiro registro semanal
+                Crie seu primeiro registro
               </Text>
             </View>
           ) : (
@@ -138,7 +119,6 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <BottomNavbar active="home" />
     </View>
   );
 }

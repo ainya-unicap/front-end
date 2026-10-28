@@ -3,6 +3,23 @@ import { api } from "./index";
 
 export type FormularioType = 'SEMANAL';
 
+export type FormularioPayload = {
+    list_id: string;
+    type: FormularioType;
+    title: string;
+    date: string;
+    week?: number;
+    weather?: 'SOL' | 'NUBLADO' | 'CHUVA';
+    estimated_height_cm?: number;
+    phenological_stage?: 'VEGETATIVO' | 'ELONGACAO' | 'FLORESCIMENTO';
+    checklist_irrigacao: boolean;
+    checklist_capina: boolean;
+    checklist_adubacao: boolean;
+    checklist_plantio: boolean;
+    checklist_pragas: boolean;
+    observations?: string;
+};
+
 export async function getFormularios() {
     try {
         const userId = getUserId();
@@ -14,9 +31,17 @@ export async function getFormularios() {
     }
 }
 
-export async function createFormulario(data: { list_id: string; type: FormularioType; observations?: string }) {
+export async function createFormulario(data: FormularioPayload) {
     try {
-        const response = await api.post('formularios', data);
+        const userId = getUserId();
+        if (!userId) {
+            throw new Error('Usuário não autenticado para criar o formulário.');
+        }
+
+        const response = await api.post('formularios', {
+            ...data,
+            user_id: userId,
+        });
         return response.data;
     } catch (error) {
         console.error('Error creating formulario:', error);
@@ -105,17 +130,35 @@ export async function getFormularioPhotos(id: string) {
     }
 }
 
-export async function uploadFormularioPhoto(formId: string, photo: any) {
+export async function uploadFormularioPhoto(
+    formId: string,
+    photo: { uri: string; mimeType: string; fileName: string }
+) {
     try {
+        if (!formId || !photo?.uri) {
+            return null;
+        }
+
+        const userId = getUserId();
+        if (!userId) {
+            throw new Error('Usuário não autenticado para enviar a foto.');
+        }
+
         const formData = new FormData();
-        formData.append('file', photo);
-        
-        const response = await api.post(`formularios/${formId}/photos`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+        formData.append('photo', {
+            uri: photo.uri,
+            type: photo.mimeType,
+            name: photo.fileName,
+        } as any);
+        formData.append('form_id', String(formId));
+        formData.append('user_id', String(userId));
+
+        const response = await api.post('photos/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
         });
+
         return response.data;
     } catch (error) {
-        console.error('Error uploading formulario photo:', error);
         throw error;
     }
 }
