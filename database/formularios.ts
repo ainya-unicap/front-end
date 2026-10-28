@@ -80,45 +80,9 @@ export async function updateFormulario(id: string, data: any) {
     }
 }
 
-export async function getFormularioChecklist(id: string) {
-    try {
-        const response = await api.get(`formularios/${id}/checklist`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching formulario checklist:', error);
-        throw error;
-    }
-}
 
-export async function createChecklistItems(formId: string, templateIds: string[]) {
-    try {
-        const response = await api.post(`formularios/${formId}/checklist`, { template_ids: templateIds });
-        return response.data;
-    } catch (error) {
-        console.error('Error creating checklist items:', error);
-        throw error;
-    }
-}
 
-export async function getFormularioMeasurements(id: string) {
-    try {
-        const response = await api.get(`formularios/${id}/measurements`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching formulario measurements:', error);
-        throw error;
-    }
-}
 
-export async function createMeasurements(formId: string, measurements: Array<{ template_id: string; value: number }>) {
-    try {
-        const response = await api.post(`formularios/${formId}/measurements`, { measurements });
-        return response.data;
-    } catch (error) {
-        console.error('Error creating measurements:', error);
-        throw error;
-    }
-}
 
 export async function getFormularioPhotos(id: string) {
     try {

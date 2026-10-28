@@ -72,8 +72,34 @@ function OptionList({
 export default function EditarPerfilScreen() {
   const { campo } = useLocalSearchParams<{ campo: Campo }>();
 
-  const { data: perfilResp, isLoading: loadingPerfil } = useSWR("perfil", () => getProfile());
+  const { data: perfilResp } = useSWR("perfil", () => getProfile());
   const perfil = (perfilResp as any)?.data ?? perfilResp;
+
+  if (campo !== "nome" && campo !== "senha" && campo !== "instituicao" && campo !== "turma") {
+    return (
+      <View className="flex-1 bg-slate-50 px-5">
+        <HeaderStack title="Editar perfil" />
+        <Text className="text-base text-slate-500">Campo inválido.</Text>
+      </View>
+    );
+  }
+
+  if (!perfil) {
+    return (
+      <View className="flex-1 bg-slate-50 px-5">
+        <HeaderStack title={TITULOS[campo]} />
+        <View className="gap-3">
+          <Skeleton width="100%" height={56} />
+          <Skeleton width="100%" height={56} />
+        </View>
+      </View>
+    );
+  }
+
+  return <EditarCampoForm campo={campo} perfil={perfil} />;
+}
+
+function EditarCampoForm({ campo, perfil }: { campo: Campo; perfil: any }) {
 
   const { data: instituicoes, isLoading: loadingInstituicoes } = useSWR(
     campo === "instituicao" ? "/institutions" : null,
@@ -84,26 +110,19 @@ export default function EditarPerfilScreen() {
     getTurmas
   );
 
-  const [nome, setNome] = useState("");
+  const [nome, setNome] = useState<string>(perfil.name ?? "");
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
-  const [selecionado, setSelecionado] = useState<string | null>(null);
+  const [selecionado, setSelecionado] = useState<string | null>(
+    campo === "instituicao"
+      ? perfil.institution?.id ?? null
+      : campo === "turma"
+      ? perfil.turma?.id ?? null
+      : null
+  );
   const [erro, setErro] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  // Preenche o formulário com o valor atual assim que o perfil chega
-  useEffect(() => {
-    if (!perfil) return;
-    setNome(perfil.name ?? "");
-    setSelecionado(
-      campo === "instituicao"
-        ? perfil.institution?.id ?? null
-        : campo === "turma"
-        ? perfil.turma?.id ?? null
-        : null
-    );
-  }, [perfil?.id, campo]);
 
   const instituicaoItems: Option[] = useMemo(
     () =>
@@ -122,15 +141,6 @@ export default function EditarPerfilScreen() {
       })),
     [turmas]
   );
-
-  if (campo !== "nome" && campo !== "senha" && campo !== "instituicao" && campo !== "turma") {
-    return (
-      <View className="flex-1 bg-slate-50 px-5">
-        <HeaderStack title="Editar perfil" />
-        <Text className="text-base text-slate-500">Campo inválido.</Text>
-      </View>
-    );
-  }
 
   async function salvar(action: () => Promise<unknown>, sucesso: string) {
     setErro(null);
@@ -190,7 +200,6 @@ export default function EditarPerfilScreen() {
   }
 
   const carregando =
-    loadingPerfil ||
     (campo === "instituicao" && loadingInstituicoes) ||
     (campo === "turma" && loadingTurmas);
   const temVinculoAtual =

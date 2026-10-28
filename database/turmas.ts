@@ -31,14 +31,3 @@ export async function linkUserToTurma(data: { turma_id: string }) {
         throw error;
     }
 }
-
-export async function getUserTurmas() {
-    try {
-        const userId = getUserId();
-        const response = await api.get(`aluno-turma/user/${userId}`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching user turmas:', error);
-        throw error;
-    }
-}

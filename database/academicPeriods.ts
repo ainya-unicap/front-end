@@ -9,13 +9,3 @@ export async function getAcademicPeriods() {
         throw error;
     }
 }
-
-export async function getActiveAcademicPeriod() {
-    try {
-        const response = await api.get('academic-periods/active');
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching active academic period:', error);
-        throw error;
-    }
-}

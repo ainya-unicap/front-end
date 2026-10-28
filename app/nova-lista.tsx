@@ -75,7 +75,7 @@ const ANALYSIS_TYPES: AnalysisType[] = [
 ];
 
 export default function NovaListaScreen() {
-  const [plantId, setPlantId] = useState<string>("");
+  const [selectedPlantId, setPlantId] = useState<string>("");
   const [analysisTypeId, setAnalysisTypeId] = useState<string>(
     ANALYSIS_TYPES[0].id
   );
@@ -104,14 +104,11 @@ export default function NovaListaScreen() {
   const periodoLetivo: string = perfil?.academic_period?.name ?? "";
   const turma: string = perfil?.turma?.name ?? "";
 
-  // Mantém a seleção válida: ao trocar de semestre a lista muda, então
-  // seleciona a primeira planta se a atual não está mais no catálogo
-  useEffect(() => {
-    if (plantas.length === 0) return;
-    if (!plantas.some((plant) => plant.id === plantId)) {
-      setPlantId(plantas[0].id);
-    }
-  }, [plantas, plantId]);
+  // Ao trocar de semestre a lista muda: se a planta escolhida saiu do
+  // catálogo, vale a primeira da nova lista
+  const plantId = plantas.some((plant) => plant.id === selectedPlantId)
+    ? selectedPlantId
+    : (plantas[0]?.id ?? "");
 
   async function handleCreate() {
     if (!plantId) {
