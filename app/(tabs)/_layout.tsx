@@ -1,6 +1,5 @@
 import { Tabs } from 'expo-router';
-import { View } from 'react-native';
-import { MaterialCommunityIcons, Ionicons, AntDesign } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   return (
@@ -44,35 +43,6 @@ export default function TabLayout() {
           title: 'Canteiros',
           tabBarIcon: ({ focused }) => (
             <MaterialCommunityIcons name="sprout" size={26} color={focused ? '#84cc16' : '#9ca3af'} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="novo-btn"
-        options={{
-          title: '',
-          tabBarIcon: () => (
-            <View 
-              style={{
-                backgroundColor: '#166534',
-                width: 55,
-                height: 55,
-                borderRadius: 28,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginTop: -35, 
-                borderWidth: 5,
-                borderColor: '#ffffff',
-                elevation: 8,
-                shadowColor: '#166534',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 5,
-              }}
-            >
-              <AntDesign name="plus" size={24} color="#ffffff" />
-            </View>
           ),
         }}
       />
