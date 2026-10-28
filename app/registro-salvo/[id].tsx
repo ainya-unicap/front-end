@@ -197,7 +197,7 @@ export default function RegistroSalvoScreen() {
           </Text>
 
           <Pressable
-            onPress={() => router.push("/registro")}
+            onPress={() => router.push({ pathname: "/registro", params: { id: String(id) } })}
             className="rounded-full bg-emerald-100 px-4 py-3 active:opacity-80"
           >
             <Text className="text-sm font-bold text-emerald-800">✏️ Editar</Text>

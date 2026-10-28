@@ -9,12 +9,14 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import {
   createFormulario,
   finalizarFormulario,
+  getFormularioById,
+  updateFormulario,
   uploadFormularioPhoto,
 } from "@/database/formularios";
 import { getListaById } from "@/database/listasFormularios";
@@ -29,9 +31,19 @@ import {
 } from "@/components/registro/PhotoUploadBox";
 import type { SelectedPhoto } from "@/components/registro/PhotoUploadBox";
 import { extractApiError } from "@/lib/apiError";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function hoje() {
   return new Date().toLocaleDateString("pt-BR");
+}
+
+function isoParaData(iso: string) {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return hoje();
+
+  const dia = String(parsed.getUTCDate()).padStart(2, "0");
+  const mes = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+  return `${dia}/${mes}/${parsed.getUTCFullYear()}`;
 }
 
 function dataParaISOString(data: string) {
@@ -51,8 +63,41 @@ function dataParaISOString(data: string) {
   return parsedDate.toISOString();
 }
 
+// Com `id` na rota a tela edita um registro existente; sem ele, cria um novo.
 export default function RegistroScreen() {
-  const { list_id } = useLocalSearchParams<{ list_id?: string }>();
+  const { list_id, id } = useLocalSearchParams<{ list_id?: string; id?: string }>();
+
+  const { data: formularioResp, isLoading } = useSWR(
+    id ? `formulario-${id}` : null,
+    () => getFormularioById(id as string)
+  );
+  const formulario = (formularioResp as any)?.data ?? formularioResp;
+
+  // O formulário só monta depois que o registro chegou, já com os valores iniciais
+  if (id && (isLoading || !formulario)) {
+    return (
+      <View className="flex-1 bg-slate-50 px-5 pt-14">
+        <Skeleton width="60%" height={28} radius={8} />
+        <View className="mt-6 gap-3">
+          <Skeleton width="100%" height={140} radius={16} />
+          <Skeleton width="100%" height={140} radius={16} />
+          <Skeleton width="100%" height={140} radius={16} />
+        </View>
+      </View>
+    );
+  }
+
+  return <RegistroForm list_id={list_id} editId={id} formulario={formulario} />;
+}
+
+type RegistroFormProps = {
+  list_id?: string;
+  editId?: string;
+  formulario?: any;
+};
+
+function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
+  const editing = !!editId;
 
   const { data: lista } = useSWR(list_id ? `lista-${list_id}` : null, () =>
     getListaById(list_id as string)
@@ -61,24 +106,28 @@ export default function RegistroScreen() {
   const listaObj = (lista as any)?.data ?? lista;
 
   // Estados Visuais do Formulário
-  const [date, setDate] = useState(hoje());
-  const [week, setWeek] = useState("");
-  const [clima, setClima] = useState<"SOL" | "NUBLADO" | "CHUVA" | "">("");
+  const [date, setDate] = useState(formulario?.date ? isoParaData(formulario.date) : hoje());
+  const [week, setWeek] = useState(formulario?.week != null ? String(formulario.week) : "");
+  const [clima, setClima] = useState<"SOL" | "NUBLADO" | "CHUVA" | "">(
+    (formulario?.weather ?? "") as "SOL" | "NUBLADO" | "CHUVA" | ""
+  );
   const [fasePlanta, setFasePlanta] = useState<
     "VEGETATIVO" | "ELONGACAO" | "FLORESCIMENTO" | ""
-  >("");
-  const [alturaEstimada, setAlturaEstimada] = useState("");
-  const [observations, setObservations] = useState("");
+  >((formulario?.phenological_stage ?? "") as "VEGETATIVO" | "ELONGACAO" | "FLORESCIMENTO" | "");
+  const [alturaEstimada, setAlturaEstimada] = useState(
+    formulario?.estimated_height_cm != null ? String(formulario.estimated_height_cm) : ""
+  );
+  const [observations, setObservations] = useState<string>(formulario?.observations ?? "");
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Checklist Fixo do MVP
   const [checklistFixo, setChecklistFixo] = useState([
-    { id: "irrigacao", label: "Irrigação realizada", checked: false },
-    { id: "limpeza", label: "Limpeza / Capina", checked: false },
-    { id: "adubacao", label: "Adubação de cobertura", checked: false },
-    { id: "plantio", label: "Plantio / Replantio", checked: false },
-    { id: "pragas", label: "Controle de pragas", checked: false },
+    { id: "irrigacao", label: "Irrigação realizada", checked: formulario?.checklist_irrigacao === true },
+    { id: "limpeza", label: "Limpeza / Capina", checked: formulario?.checklist_capina === true },
+    { id: "adubacao", label: "Adubação de cobertura", checked: formulario?.checklist_adubacao === true },
+    { id: "plantio", label: "Plantio / Replantio", checked: formulario?.checklist_plantio === true },
+    { id: "pragas", label: "Controle de pragas", checked: formulario?.checklist_pragas === true },
   ]);
 
   function toggleChecklistFixo(id: string) {
@@ -88,6 +137,11 @@ export default function RegistroScreen() {
   }
 
   async function handleSave() {
+    if (editing) {
+      await handleSaveEdicao();
+      return;
+    }
+
     if (!list_id) {
       Alert.alert("Lista não encontrada", "Abra o registro a partir de um canteiro.");
       return;
@@ -162,6 +216,64 @@ export default function RegistroScreen() {
     }
   }
 
+  // Edição: atualiza os campos do registro (as fotos já enviadas são mantidas)
+  async function handleSaveEdicao() {
+    const dataISO = dataParaISOString(date);
+    if (!dataISO) {
+      Alert.alert("Data inválida", "Informe uma data válida no formato dd/mm/aaaa.");
+      return;
+    }
+
+    const semana = week.trim() ? Number(week) : undefined;
+    if (semana !== undefined && (!Number.isInteger(semana) || semana < 1)) {
+      Alert.alert("Semana inválida", "Informe um número de semana válido.");
+      return;
+    }
+
+    const altura = alturaEstimada.trim() ? Number(alturaEstimada) : undefined;
+    if (altura !== undefined && (!Number.isFinite(altura) || altura < 0)) {
+      Alert.alert("Altura inválida", "Informe uma altura válida em centímetros.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      await updateFormulario(editId as string, {
+        type: "SEMANAL",
+        date: dataISO,
+        ...(semana !== undefined ? { week: semana } : {}),
+        ...(clima ? { weather: clima } : {}),
+        ...(altura !== undefined ? { estimated_height_cm: altura } : {}),
+        ...(fasePlanta ? { phenological_stage: fasePlanta } : {}),
+        checklist_irrigacao: checklistFixo.find((i) => i.id === "irrigacao")?.checked ?? false,
+        checklist_capina: checklistFixo.find((i) => i.id === "limpeza")?.checked ?? false,
+        checklist_adubacao: checklistFixo.find((i) => i.id === "adubacao")?.checked ?? false,
+        checklist_plantio: checklistFixo.find((i) => i.id === "plantio")?.checked ?? false,
+        checklist_pragas: checklistFixo.find((i) => i.id === "pragas")?.checked ?? false,
+        observations,
+      });
+
+      // Atualiza o registro aberto e as telas que listam registros
+      await mutate(
+        (key) =>
+          typeof key === "string" &&
+          (key === `formulario-${editId}` ||
+            key === "home" ||
+            key === "user-canteiros" ||
+            key.startsWith("canteiro-forms-"))
+      );
+      router.back();
+    } catch (error: unknown) {
+      Alert.alert(
+        "Erro ao salvar",
+        extractApiError(error, "Não foi possível salvar as alterações agora. Tente novamente.")
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <View className="flex-1 bg-slate-50">
       <KeyboardAwareScrollView
@@ -174,9 +286,13 @@ export default function RegistroScreen() {
           <Pressable onPress={() => router.back()} className="h-11 w-11 items-center justify-center rounded-full bg-slate-100">
             <Text className="text-2xl text-slate-500">‹</Text>
           </Pressable>
-          <Text className="flex-1 px-4 text-2xl font-bold text-slate-950">Novo Registro</Text>
+          <Text className="flex-1 px-4 text-2xl font-bold text-slate-950">
+            {editing ? "Editar Registro" : "Novo Registro"}
+          </Text>
           <View className="rounded-full bg-amber-100 px-3 py-2">
-            <Text className="text-xs font-bold text-amber-600">Rascunho</Text>
+            <Text className="text-xs font-bold text-amber-600">
+              {editing ? (formulario?.synced ? "Completo" : "Incompleto") : "Rascunho"}
+            </Text>
           </View>
         </View>
 
@@ -247,7 +363,14 @@ export default function RegistroScreen() {
 
         {/* FOTOS */}
         <SectionCard title="Registro Fotográfico" icon="📷">
-          <PhotoUploadBox photos={photos} onPhotosChange={setPhotos} />
+          {editing ? (
+            <Text className="text-sm leading-5 text-slate-500">
+              {formulario?.photos?.length ?? 0} foto(s) já enviada(s). As fotos de um registro
+              salvo são mantidas e não podem ser alteradas por esta tela.
+            </Text>
+          ) : (
+            <PhotoUploadBox photos={photos} onPhotosChange={setPhotos} />
+          )}
         </SectionCard>
 
         {/* CHECKLIST FIXO MVP */}
@@ -281,7 +404,9 @@ export default function RegistroScreen() {
           disabled={saving}
           className="mt-2 mb-8 h-14 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
         >
-          {saving ? <ActivityIndicator color="#ffffff" /> : <Text className="text-base font-bold text-white">Salvar registro</Text>}
+          {saving ? <ActivityIndicator color="#ffffff" /> : <Text className="text-base font-bold text-white">
+              {editing ? "Salvar alterações" : "Salvar registro"}
+            </Text>}
         </Pressable>
       </KeyboardAwareScrollView>
     </View>
