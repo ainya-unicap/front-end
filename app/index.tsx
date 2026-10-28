@@ -1,12 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Animated, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
+import { getRefreshToken } from '@/database/auth';
 
 const { width } = Dimensions.get('window');
 
 export default function SplashScreen() {
   const router = useRouter();
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const [progressAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -14,7 +15,9 @@ export default function SplashScreen() {
       duration: 3000,
       useNativeDriver: false,
     }).start(() => {
-      router.replace('/login');
+      // Com sessão salva vai direto para o app; se o token tiver expirado, a
+      // primeira chamada à API tenta renovar e, falhando, volta para o login
+      router.replace(getRefreshToken() ? '/(tabs)' : '/login');
     });
   }, [router, progressAnim]);
 
