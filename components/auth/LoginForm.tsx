@@ -114,12 +114,7 @@ export function LoginForm() {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() =>
-          Alert.alert(
-            "Recuperar senha",
-            "Procure o professor responsável pela turma para redefinir sua senha."
-          )
-        }
+        onPress={() => router.push("/recuperar-senha" as any)}
         className="mb-5 self-end active:opacity-60"
       >
 

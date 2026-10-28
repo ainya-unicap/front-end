@@ -20,3 +20,11 @@ export function extractApiError(error: unknown, fallback: string): string {
 
   return fallback;
 }
+
+/** Código estável (`codigo`) que o backend envia em erros de negócio. */
+export function extractApiErrorCode(error: unknown): string | undefined {
+  const data = (error as { response?: { data?: unknown } })?.response?.data;
+  const codigo = (data as { codigo?: unknown } | undefined)?.codigo;
+
+  return typeof codigo === "string" ? codigo : undefined;
+}
