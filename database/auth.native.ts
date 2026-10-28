@@ -1,6 +1,7 @@
 import db from "./localDb";
 import { api } from "./index";
-import { Alert } from "react-native";
+import { extractApiError } from "@/lib/apiError";
+import { parsePerfil, PerfilAcademico } from "@/lib/perfil";
 
 export function saveAccessToken(token: string) {
     db.runSync(`
@@ -69,7 +70,6 @@ export function getUserId(): string | null {
   return row?.value ?? null;
 }
 
-<<<<<<< HEAD
 export type CadastroInput = {
     role: PerfilAcademico;
     name: string;
@@ -109,15 +109,15 @@ export async function cadastro({
         });
 
         return { ok: true, perfil: parsePerfil(response.data?.role) };
-=======
-export async function cadastro({ role, name, email, instituicao, senha }: any) {
-    try {
-        const response = await api.post('users', { role, name, email, instituicao, password: senha }); 
-        return response.data;
->>>>>>> origin/main
     } catch (error) {
-        console.error('Error fetching institutions:', error);
-        throw error;
+        console.error('Error during registration:', error);
+        return {
+            ok: false,
+            message: extractApiError(
+                error,
+                'Não foi possível concluir o cadastro. Tente novamente.'
+            ),
+        };
     }
 }
 
