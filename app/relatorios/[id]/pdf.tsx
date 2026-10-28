@@ -1,50 +1,54 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
+import useSWR from "swr";
 
 import HeaderStack from "@/components/navigation/headerStack";
 import { PdfViewer } from "@/components/relatorios/PdfViewer";
 import { downloadRelatorioPDF } from "@/database/relatoriosService";
 import { extractApiError } from "@/lib/apiError";
 
+// Baixa o PDF para o cache do app e lê o conteúdo para o visualizador
+async function carregarPdf(id: string) {
+  const uri = await downloadRelatorioPDF(id);
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  return { uri, base64 };
+}
+
 export default function RelatorioPdfScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const [fileUri, setFileUri] = useState<string | null>(null);
-  const [base64, setBase64] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
+  const {
+    data: pdf,
+    error,
+    isLoading,
+    mutate: recarregar,
+  } = useSWR(id ? `relatorio-pdf-${id}` : null, () => carregarPdf(String(id)), {
+    // O PDF é pesado: não rebaixa ao voltar para o app nem a cada reconexão
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    shouldRetryOnError: false,
+  });
+
+  const [erroVisualizador, setErroVisualizador] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
 
-  const carregar = useCallback(async () => {
-    try {
-      setLoading(true);
-      setErro(null);
+  const erro = error
+    ? extractApiError(error, "Não foi possível gerar o PDF agora. Tente novamente.")
+    : erroVisualizador;
 
-      const uri = await downloadRelatorioPDF(String(id));
-      const content = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      setFileUri(uri);
-      setBase64(content);
-    } catch (error) {
-      setErro(
-        extractApiError(error, "Não foi possível gerar o PDF agora. Tente novamente.")
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (id) carregar();
-  }, [id, carregar]);
+  function handleTentarNovamente() {
+    setErroVisualizador(null);
+    recarregar();
+  }
 
   async function handleCompartilhar() {
-    if (!fileUri) return;
+    if (!pdf) return;
 
     try {
       setSharing(true);
@@ -53,7 +57,7 @@ export default function RelatorioPdfScreen() {
         return;
       }
       // Abre a folha do sistema: salvar em Arquivos/Drive, abrir em outro app ou enviar
-      await Sharing.shareAsync(fileUri, {
+      await Sharing.shareAsync(pdf.uri, {
         mimeType: "application/pdf",
         UTI: "com.adobe.pdf",
         dialogTitle: "Baixar relatório",
@@ -73,18 +77,18 @@ export default function RelatorioPdfScreen() {
         <HeaderStack title="Visualizar PDF" />
       </View>
 
-      {loading ? (
+      {isLoading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color="#14532d" />
           <Text className="mt-3 text-sm text-slate-400">Gerando PDF...</Text>
         </View>
-      ) : erro || !base64 ? (
+      ) : erro || !pdf ? (
         <View className="flex-1 items-center justify-center px-8">
           <Text className="mb-4 text-center text-base text-red-600">
             {erro ?? "Não foi possível carregar o PDF."}
           </Text>
           <Pressable
-            onPress={carregar}
+            onPress={handleTentarNovamente}
             className="rounded-2xl border border-emerald-800 px-6 py-3 active:opacity-80"
           >
             <Text className="font-bold text-emerald-800">Tentar novamente</Text>
@@ -93,7 +97,7 @@ export default function RelatorioPdfScreen() {
       ) : (
         <>
           <View className="flex-1">
-            <PdfViewer base64={base64} onError={setErro} />
+            <PdfViewer base64={pdf.base64} onError={setErroVisualizador} />
           </View>
 
           <View className="border-t border-slate-100 bg-slate-50 px-5 pb-8 pt-3">

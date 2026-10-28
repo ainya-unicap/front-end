@@ -80,16 +80,14 @@ export default function NovoRelatorioScreen() {
     return arr.map(mapCanteiro);
   }, [canteirosData]);
 
-  const [canteiroId, setCanteiroId] = useState("");
+  const [selectedCanteiroId, setCanteiroId] = useState("");
   const [reportType, setReportType] = useState<ReportType>("analise");
   const [generating, setGenerating] = useState(false);
 
-  // Seleciona o primeiro canteiro quando a lista carrega
-  useEffect(() => {
-    if (!canteiroId && canteiros.length > 0) {
-      setCanteiroId(canteiros[0].id);
-    }
-  }, [canteiros, canteiroId]);
+  // Sem escolha válida, vale o primeiro canteiro da lista
+  const canteiroId = canteiros.some((item) => item.id === selectedCanteiroId)
+    ? selectedCanteiroId
+    : (canteiros[0]?.id ?? "");
 
   const canteiro = useMemo(
     () => canteiros.find((item) => item.id === canteiroId),
