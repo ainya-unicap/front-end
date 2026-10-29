@@ -131,3 +131,14 @@ export async function downloadRelatorioPDF(id: string): Promise<string> {
         throw error;
     }
 }
+
+// Só relatório em rascunho pode ser excluído (o backend recusa os demais)
+export async function deleteRelatorio(id: string) {
+    try {
+        const response = await api.delete(`relatorios/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting relatorio:', error);
+        throw error;
+    }
+}

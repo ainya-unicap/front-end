@@ -1,9 +1,11 @@
-import { View, Text, TouchableOpacity, FlatList, ViewStyle } from 'react-native';
+import { Alert, View, Text, TouchableOpacity, FlatList, ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AntDesign } from '@expo/vector-icons';
 import { getRelatorios } from '@/database/relatorios';
+import { deleteRelatorio } from '@/database/relatoriosService';
+import { extractApiError } from '@/lib/apiError';
 import { Skeleton } from '@/components/ui/Skeleton';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 
 const shadowStyle: ViewStyle = {
   elevation: 2,
@@ -30,6 +32,32 @@ export default function ListaRelatoriosScreen() {
     ? data
     : ((data as any)?.data ?? []);
 
+  // Segurar o card exclui só o relatório (o canteiro e os registros ficam)
+  function handleExcluir(relatorio: any, titulo: string) {
+    Alert.alert(
+      `Excluir o relatório de "${titulo}"?`,
+      "O relatório será apagado e isso não pode ser desfeito. Os registros do canteiro continuam salvos.",
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteRelatorio(String(relatorio.id));
+              await mutate('relatorios');
+            } catch (err) {
+              Alert.alert(
+                'Não foi possível excluir',
+                extractApiError(err, 'Tente novamente em instantes.')
+              );
+            }
+          },
+        },
+      ]
+    );
+  }
+
   const renderItem = ({ item }: { item: any }) => {
     const planta =
       item.list?.plant?.name ?? item.canteiro?.name ?? 'Relatório';
@@ -45,6 +73,8 @@ export default function ListaRelatoriosScreen() {
         className="bg-white p-5 rounded-[24px] mb-4 border border-gray-100"
         style={shadowStyle}
         onPress={() => router.push(`/relatorios/${item.id}` as any)}
+        onLongPress={() => handleExcluir(item, planta)}
+        accessibilityHint="Segure para excluir o relatório"
       >
         <View className="flex-row justify-between items-start mb-1">
           <Text className="text-lg font-bold text-[#0f172a]">{planta}</Text>
