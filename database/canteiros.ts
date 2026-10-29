@@ -42,3 +42,25 @@ export async function getCanteiroListas(canteiroId: string) {
         throw error;
     }
 }
+
+// Listas do canteiro, cada uma com seus registros e fotos (exclusivo de quem é vinculado)
+export async function getCanteiroFormularios(canteiroId: string) {
+    try {
+        const response = await api.get(`canteiros/${canteiroId}/formularios`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching canteiro formularios:', error);
+        throw error;
+    }
+}
+
+// Exclui o canteiro; se houver outros alunos vinculados, só remove o vínculo de quem pediu
+export async function deleteCanteiro(canteiroId: string) {
+    try {
+        const response = await api.delete(`canteiros/${canteiroId}`);
+        return response.data as { message: string; removido: 'vinculo' | 'canteiro' };
+    } catch (error) {
+        console.error('Error deleting canteiro:', error);
+        throw error;
+    }
+}

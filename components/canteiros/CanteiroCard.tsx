@@ -12,6 +12,8 @@ type CanteiroCardProps = {
   status: "ATIVO" | "PAUSADO";
   progress: number;
   onPress?: () => void;
+  // Segurar o card (usado para excluir o canteiro)
+  onLongPress?: () => void;
 };
 
 export function CanteiroCard({
@@ -23,10 +25,13 @@ export function CanteiroCard({
   status,
   progress,
   onPress,
+  onLongPress,
 }: CanteiroCardProps) {
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      accessibilityHint="Segure para excluir o canteiro"
       className="mb-4 rounded-2xl bg-white p-4 shadow-sm active:opacity-80"
     >
       <View className="mb-3 flex-row items-center">

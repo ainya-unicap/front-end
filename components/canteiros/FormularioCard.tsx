@@ -1,35 +1,21 @@
 import { Pressable, Text, View } from "react-native";
 
 import { StatusBadge } from "./StatusBadge";
-import { ProgressBar } from "./ProgressBar";
-
-type FormularioStatus = "COMPLETO" | "RASCUNHO" | "PENDENTE";
 
 type FormularioCardProps = {
   week: number;
-  status: FormularioStatus;
+  // false = registro que ficou incompleto no meio do envio
+  complete: boolean;
   dateLabel: string;
   photos: number;
-  checklistDone: number;
-  checklistTotal: number;
-  progress: number;
   onPress?: () => void;
 };
 
-const STATUS_VARIANT = {
-  COMPLETO: "green",
-  RASCUNHO: "amber",
-  PENDENTE: "gray",
-} as const;
-
 export function FormularioCard({
   week,
-  status,
+  complete,
   dateLabel,
   photos,
-  checklistDone,
-  checklistTotal,
-  progress,
   onPress,
 }: FormularioCardProps) {
   return (
@@ -42,21 +28,16 @@ export function FormularioCard({
           Semana {week} — Registro semanal
         </Text>
 
-        <StatusBadge label={status} variant={STATUS_VARIANT[status]} />
+        {/* Só destaca o registro que precisa de atenção */}
+        {complete ? null : <StatusBadge label="INCOMPLETO" variant="amber" />}
       </View>
 
       <Text className="mb-3 text-sm text-slate-400">{dateLabel}</Text>
 
-      <View className="flex-row items-center gap-3">
-        <Text className="text-sm text-slate-500">📷 {photos}</Text>
-
+      <View className="flex-row items-center">
         <Text className="text-sm text-slate-500">
-          ✅ {checklistDone}/{checklistTotal}
+          📷 {photos} {photos === 1 ? "foto" : "fotos"}
         </Text>
-
-        <ProgressBar value={progress} />
-
-        <Text className="text-sm font-bold text-slate-700">{progress}%</Text>
       </View>
     </Pressable>
   );
