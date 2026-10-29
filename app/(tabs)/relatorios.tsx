@@ -5,6 +5,7 @@ import { getRelatorios } from '@/database/relatorios';
 import { deleteRelatorio } from '@/database/relatoriosService';
 import { extractApiError } from '@/lib/apiError';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { AppIcon } from '@/components/ui/AppIcon';
 import useSWR, { mutate } from 'swr';
 
 const shadowStyle: ViewStyle = {
@@ -87,7 +88,7 @@ export default function ListaRelatoriosScreen() {
 
         <View className="flex-row justify-between items-center border-t border-gray-100 pt-4 mt-1">
           <View className="flex-row items-center">
-            <Text className="mr-2 text-base">📅</Text>
+            <AppIcon name="calendar" size={16} color="#94a3b8" />
             <Text className="text-gray-400 text-sm font-medium">{periodo}</Text>
           </View>
 

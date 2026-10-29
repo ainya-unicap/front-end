@@ -10,6 +10,7 @@ import useSWR from "swr";
 
 import HeaderStack from "@/components/navigation/headerStack";
 import { getRelatorioById } from "@/database/relatoriosService";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 const SECTIONS = [
   { number: 1, key: 'introduction', title: 'Introdução' },
@@ -47,7 +48,7 @@ export default function RelatorioIndexScreen() {
       <ScrollView>
         <View className="px-6 pb-6 bg-green-900 items-center gap-2 justify-center">
           <HeaderStack title="" />
-          <Text>📄</Text>
+          <AppIcon name="file" size={28} color="#ffffff" />
           <Text className="text-2xl font-bold text-white">Relatório de Análise do Canteiro</Text>
           <Text className="text-white">{canteiroNome}</Text>
         </View>

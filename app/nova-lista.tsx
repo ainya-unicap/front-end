@@ -21,30 +21,19 @@ import Warning from "@/components/forms/warning";
 import { PlantOptionCard } from "@/components/nova-lista/PlantOptionCard";
 import { AnalysisTypeCard } from "@/components/nova-lista/AnalysisTypeCard";
 import { LabeledField } from "@/components/nova-lista/LabeledField";
+import { AppIcon, getPlantCategoryIcon, type AppIconName } from "@/components/ui/AppIcon";
 
 type PlantOption = {
   id: string;
   name: string;
-  icon: string;
-};
-
-// Emoji por categoria de planta forrageira (mesmo mapa usado na tela de canteiros)
-const CATEGORY_ICON: Record<string, string> = {
-  CACTACEA: "🌵",
-  CULTURA_ANUAL: "🌾",
-  GRAMINEA_PORTE_ALTO: "🌱",
-  GRAMINEA_PORTE_BAIXO: "🍀",
-  GRAMINEA_PORTE_MEDIO: "🌿",
-  LEGUMINOSA_ARBUSTIVA: "🌳",
-  LEGUMINOSA_HERBACEA: "🍃",
-  OLEAGINOSA_FORRAGEIRA: "🌻",
+  icon: AppIconName;
 };
 
 function mapPlanta(planta: any): PlantOption {
   return {
     id: String(planta.id),
     name: planta.name ?? "Planta",
-    icon: CATEGORY_ICON[planta.category] ?? "🌱",
+    icon: getPlantCategoryIcon(planta.category),
   };
 }
 
@@ -52,7 +41,7 @@ type AnalysisType = {
   id: string;
   title: string;
   subtitle: string;
-  icon: string;
+  icon: AppIconName;
   // Filtra o catálogo de plantas (plantas com foco AMBOS aparecem nos dois)
   semesterFocus: SemesterFocus;
 };
@@ -62,14 +51,14 @@ const ANALYSIS_TYPES: AnalysisType[] = [
     id: "1-semestre",
     title: "1º Semestre",
     subtitle: "Cultivar, manejar e caracterizar",
-    icon: "🌱",
+    icon: "plant",
     semesterFocus: "PRIMEIRO",
   },
   {
     id: "2-semestre",
     title: "2º Semestre",
     subtitle: "Fatores ecológicos",
-    icon: "🌍",
+    icon: "globe",
     semesterFocus: "SEGUNDO",
   },
 ];
@@ -210,7 +199,9 @@ export default function NovaListaScreen() {
         {/* Configurações */}
         <View className="mb-6 rounded-2xl bg-white p-4 shadow-sm">
           <View className="mb-4 flex-row items-center">
-            <Text className="mr-2 text-base">⚙️</Text>
+            <View className="mr-2">
+              <AppIcon name="gear" size={18} color="#065f46" />
+            </View>
             <Text className="text-sm font-extrabold uppercase tracking-wide text-emerald-900">
               Configurações
             </Text>
@@ -247,7 +238,7 @@ export default function NovaListaScreen() {
           </LabeledField>
         </View>
 
-        <Warning text="⚠️ Use EPIs adequados. Leve protetor solar e água." />
+        <Warning text="Use EPIs adequados. Leve protetor solar e água." />
       </ScrollView>
 
       {/* Footer fixo com a ação principal */}

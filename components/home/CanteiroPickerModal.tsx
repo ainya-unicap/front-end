@@ -6,12 +6,13 @@ import {
   Text,
   View,
 } from "react-native";
+import { AppIcon, type AppIconName } from "@/components/ui/AppIcon";
 
 export type CanteiroOption = {
   id: string;
   name: string;
   plantName: string;
-  icon: string;
+  icon: AppIconName;
   // Lista de formulários do canteiro (necessária para criar registros)
   listId: string | null;
 };
@@ -111,7 +112,7 @@ export function CanteiroPickerModal({
                     }`}
                   >
                     <View className="mr-3 h-11 w-11 items-center justify-center rounded-xl bg-emerald-50">
-                      <Text className="text-xl">{canteiro.icon}</Text>
+                      <AppIcon name={canteiro.icon} size={24} />
                     </View>
 
                     <View className="flex-1">

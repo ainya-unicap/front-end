@@ -1,4 +1,5 @@
 import { Image, Text, View } from "react-native";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 type PhotoPreview = {
   id: string;
@@ -36,7 +37,7 @@ export function PhotoPreviewList({ photos }: PhotoPreviewListProps) {
         <View key={photo.id} className="overflow-hidden rounded-xl">
           {photo.url.startsWith("/uploads/") ? (
             <View className="h-16 w-16 items-center justify-center bg-emerald-100">
-              <Text className="text-2xl">🌱</Text>
+              <AppIcon name="plant" size={28} />
             </View>
           ) : (
             <Image

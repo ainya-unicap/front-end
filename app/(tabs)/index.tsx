@@ -17,18 +17,7 @@ import { HomeHeader } from "@/components/home/HomeHeader";
 import { QuickActionCard } from "@/components/home/QuickActionCard";
 import { RecentRecordCard } from "@/components/home/RecentRecordCard";
 import { Skeleton } from "@/components/ui/Skeleton";
-
-// Emoji por categoria de planta forrageira
-const CATEGORY_ICON: Record<string, string> = {
-  CACTACEA: "🌵",
-  CULTURA_ANUAL: "🌾",
-  GRAMINEA_PORTE_ALTO: "🌱",
-  GRAMINEA_PORTE_BAIXO: "🍀",
-  GRAMINEA_PORTE_MEDIO: "🌿",
-  LEGUMINOSA_ARBUSTIVA: "🌳",
-  LEGUMINOSA_HERBACEA: "🍃",
-  OLEAGINOSA_FORRAGEIRA: "🌻",
-};
+import { getPlantCategoryIcon } from "@/components/ui/AppIcon";
 
 type Picker = "registro" | "relatorio" | null;
 
@@ -50,7 +39,7 @@ export default function HomeScreen() {
       id: String(canteiro.id),
       name: canteiro.name ?? canteiro.plant?.name ?? "Canteiro",
       plantName: canteiro.plant?.name ?? "Planta",
-      icon: CATEGORY_ICON[canteiro.plant?.category] ?? "🌱",
+      icon: getPlantCategoryIcon(canteiro.plant?.category),
       // Se houver mais de uma lista, vale a primeira (igual à aba Canteiros)
       listId: canteiro.listaDeFormularios?.[0]?.id
         ? String(canteiro.listaDeFormularios[0].id)
@@ -107,21 +96,21 @@ export default function HomeScreen() {
         <View className="mb-8 flex-row flex-wrap justify-between gap-3">
           <QuickActionCard
             fullWidth
-            icon="📝"
+            icon="note"
             title="Novo Registro"
             subtitle="Registro semanal"
             onPress={() => setPicker("registro")}
           />
 
           <QuickActionCard
-            icon="🌱"
+            icon="plant"
             title="Novo Canteiro"
             subtitle="Cadastrar planta"
             onPress={() => router.push("/nova-lista")}
           />
 
           <QuickActionCard
-            icon="📄"
+            icon="file"
             title="Novo Relatório"
             subtitle="Gerar com IA"
             onPress={() => setPicker("relatorio")}

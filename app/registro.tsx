@@ -32,6 +32,7 @@ import {
 import type { SelectedPhoto } from "@/components/registro/PhotoUploadBox";
 import { extractApiError } from "@/lib/apiError";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 function hoje() {
   return new Date().toLocaleDateString("pt-BR");
@@ -297,7 +298,7 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
         </View>
 
         {/* INFORMAÇÕES GERAIS */}
-        <SectionCard title="Informações Gerais" icon="">
+        <SectionCard title="Informações Gerais">
           <View className="flex-row flex-wrap justify-between mb-4">
             <FieldBox label="Data" value={date} onChangeText={setDate} />
             <FieldBox label="Semana (opcional)" value={week} onChangeText={setWeek} />
@@ -305,9 +306,9 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
           <Text className="mb-2 text-sm font-bold uppercase text-slate-600">Condições do Tempo</Text>
           <View className="flex-row justify-between gap-2">
             {[
-              { label: "Sol ☀️", value: "SOL" as const },
-              { label: "Nublado ☁️", value: "NUBLADO" as const },
-              { label: "Chuva 🌧️", value: "CHUVA" as const },
+              { label: "Sol", icon: "sun" as const, value: "SOL" as const },
+              { label: "Nublado", icon: "cloud" as const, value: "NUBLADO" as const },
+              { label: "Chuva", icon: "cloudRain" as const, value: "CHUVA" as const },
             ].map((opcao) => (
               <TouchableOpacity
                 key={opcao.value}
@@ -316,14 +317,19 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
                   clima === opcao.value ? "bg-emerald-700 border-emerald-700" : "bg-slate-50 border-slate-300"
                 }`}
               >
-                <Text className={`text-base ${clima === opcao.value ? "text-white font-bold" : "text-slate-700 font-medium"}`}>{opcao.label}</Text>
+                <AppIcon
+                  name={opcao.icon}
+                  size={20}
+                  color={clima === opcao.value ? "#ffffff" : "#334155"}
+                />
+                <Text className={`mt-1 text-base ${clima === opcao.value ? "text-white font-bold" : "text-slate-700 font-medium"}`}>{opcao.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </SectionCard>
 
         {/* ESTADO DA PLANTA (Apenas Altura) */}
-        <SectionCard title="Estado da Planta" icon="🌱">
+        <SectionCard title="Estado da Planta" icon="plant">
           <View className="mb-4">
             <FieldBox
               label="Altura estimada (cm) (opcional)"
@@ -334,9 +340,9 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
           <Text className="mb-2 text-sm font-bold uppercase text-slate-600">Fase da planta (opcional)</Text>
           <View className="flex-row justify-between gap-2">
             {[
-              { id: "VEGETATIVO" as const, texto: "Vegetativo", emoji: "🌱" },
-              { id: "ELONGACAO" as const, texto: "Elongação", emoji: "🌿" },
-              { id: "FLORESCIMENTO" as const, texto: "Florescimento", emoji: "🌷" },
+              { id: "VEGETATIVO" as const, texto: "Vegetativo", icon: "plant" as const },
+              { id: "ELONGACAO" as const, texto: "Elongação", icon: "leaf" as const },
+              { id: "FLORESCIMENTO" as const, texto: "Florescimento", icon: "flower" as const },
             ].map((fase) => (
               <TouchableOpacity
                 key={fase.id}
@@ -353,16 +359,18 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
                 >
                   {fase.texto}
                 </Text>
-                <Text className="text-center text-base mt-1">
-                  {fase.emoji}
-                </Text>
+                <AppIcon
+                  name={fase.icon}
+                  size={20}
+                  color={fasePlanta === fase.id ? "#ffffff" : "#047857"}
+                />
               </TouchableOpacity>
             ))}
           </View>
         </SectionCard>
 
         {/* FOTOS */}
-        <SectionCard title="Registro Fotográfico" icon="📷">
+        <SectionCard title="Registro Fotográfico" icon="camera">
           {editing ? (
             <Text className="text-sm leading-5 text-slate-500">
               {formulario?.photos?.length ?? 0} foto(s) já enviada(s). As fotos de um registro
@@ -374,7 +382,7 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
         </SectionCard>
 
         {/* CHECKLIST FIXO MVP */}
-        <SectionCard title="Checklist de Manejo" icon="✅">
+        <SectionCard title="Checklist de Manejo" icon="check">
           {checklistFixo.map((item) => (
             <ChecklistItem
               key={item.id}
@@ -386,7 +394,7 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
         </SectionCard>
 
         {/* OBSERVAÇÕES */}
-        <SectionCard title="Observações Gerais" icon="📝">
+        <SectionCard title="Observações Gerais" icon="note">
           <TextInput
             value={observations}
             onChangeText={setObservations}

@@ -18,6 +18,7 @@ import { SavedSectionCard } from "@/components/registro-salvo/SavedSectionCard";
 import { PhotoPreviewList } from "@/components/registro-salvo/PhotoPreviewList";
 import { SavedChecklistList } from "@/components/registro-salvo/SavedChecklistList";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 function formatDateTimeRange(formulario: any) {
   const start = new Date(formulario.started_at || formulario.createdAt);
@@ -180,7 +181,10 @@ export default function RegistroSalvoScreen() {
             onPress={() => router.push({ pathname: "/registro", params: { id: String(id) } })}
             className="rounded-full bg-emerald-100 px-4 py-3 active:opacity-80"
           >
-            <Text className="text-sm font-bold text-emerald-800">✏️ Editar</Text>
+            <View className="flex-row items-center">
+              <AppIcon name="pencil" size={16} color="#065f46" />
+              <Text className="ml-1 text-sm font-bold text-emerald-800">Editar</Text>
+            </View>
           </Pressable>
         </View>
 
@@ -195,11 +199,11 @@ export default function RegistroSalvoScreen() {
           <SummaryMetricCard value={`${totalFotos}`} label="Fotos" />
         </View>
 
-        <SavedSectionCard title="Fotos registradas" icon="📷">
+        <SavedSectionCard title="Fotos registradas" icon="camera">
           <PhotoPreviewList photos={formulario.photos || []} />
         </SavedSectionCard>
 
-        <SavedSectionCard title="Dados do registro" icon="🌱">
+        <SavedSectionCard title="Dados do registro" icon="plant">
           {[
             ["Título", formulario.title],
             ["Semana", formulario.week != null ? String(formulario.week) : "—"],
@@ -220,12 +224,12 @@ export default function RegistroSalvoScreen() {
 
         <SavedSectionCard
           title={`Checklist (${totalChecklistChecked}/${totalChecklist})`}
-          icon="✅"
+          icon="check"
         >
           <SavedChecklistList items={checklistItems} />
         </SavedSectionCard>
 
-        <SavedSectionCard title="Observações" icon="📝">
+        <SavedSectionCard title="Observações" icon="note">
           <Text className="text-base leading-6 text-slate-600">
             {formulario.observations || "Nenhuma observação registrada."}
           </Text>

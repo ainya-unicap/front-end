@@ -22,28 +22,17 @@ import { SectionCard } from "@/components/registro/SectionCard";
 import { AnalysisTypeCard } from "@/components/nova-lista/AnalysisTypeCard";
 import { Stepper } from "@/components/relatorios/Stepper";
 import { CanteiroSelectCard } from "@/components/relatorios/CanteiroSelectCard";
+import { AppIcon, getPlantCategoryIcon, type AppIconName } from "@/components/ui/AppIcon";
 
 type CanteiroOption = {
   id: string;
   listId: string | null;
-  icon: string;
+  icon: AppIconName;
   name: string;
   totalForms: number;
   location: string;
   weeks: string[];
   extraCount: number;
-};
-
-// Emoji por categoria de planta forrageira
-const CATEGORY_ICON: Record<string, string> = {
-  CACTACEA: "🌵",
-  CULTURA_ANUAL: "🌾",
-  GRAMINEA_PORTE_ALTO: "🌱",
-  GRAMINEA_PORTE_BAIXO: "🍀",
-  GRAMINEA_PORTE_MEDIO: "🌿",
-  LEGUMINOSA_ARBUSTIVA: "🌳",
-  LEGUMINOSA_HERBACEA: "🍃",
-  OLEAGINOSA_FORRAGEIRA: "🌻",
 };
 
 function mapCanteiro(canteiro: any): CanteiroOption {
@@ -58,7 +47,7 @@ function mapCanteiro(canteiro: any): CanteiroOption {
   return {
     id: String(canteiro.id),
     listId: lista?.id ? String(lista.id) : null,
-    icon: CATEGORY_ICON[canteiro.plant?.category] ?? "🌱",
+    icon: getPlantCategoryIcon(canteiro.plant?.category),
     name: canteiro.plant?.name ?? canteiro.name ?? "Canteiro",
     totalForms,
     location: canteiro.name ?? "",
@@ -185,7 +174,7 @@ export default function NovoRelatorioScreen() {
           <Stepper steps={["Canteiro", "Gerar"]} current={0} />
         </View>
 
-        <SectionCard title="Escolha o canteiro" icon="🌱">
+        <SectionCard title="Escolha o canteiro" icon="plant">
           <Text className="mb-4 text-sm leading-5 text-slate-400">
             Os registros do canteiro escolhido são a base do relatório.
           </Text>
@@ -212,10 +201,10 @@ export default function NovoRelatorioScreen() {
           )}
         </SectionCard>
 
-        <SectionCard title="Tipo de relatório" icon="📄">
+        <SectionCard title="Tipo de relatório" icon="file">
           <View className="flex-row gap-3">
             <AnalysisTypeCard
-              icon="📋"
+              icon="clipboard"
               title="Relatório simples"
               subtitle="Todos os registros"
               selected={reportType === "simples"}
@@ -223,7 +212,7 @@ export default function NovoRelatorioScreen() {
             />
 
             <AnalysisTypeCard
-              icon="📊"
+              icon="chart"
               title="Com análise"
               subtitle="+ gráficos e análises"
               selected={reportType === "analise"}
@@ -233,7 +222,9 @@ export default function NovoRelatorioScreen() {
         </SectionCard>
 
         <View className="flex-row rounded-2xl bg-emerald-50 p-4">
-          <Text className="mr-2 text-base">✨</Text>
+          <View className="mr-2">
+            <AppIcon name="sparkle" size={18} color="#065f46" />
+          </View>
           <Text className="flex-1 text-sm leading-5 text-slate-600">
             {reportType === "simples" ? (
               <>

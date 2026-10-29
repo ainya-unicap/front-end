@@ -1,5 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { Alert, Image, Pressable, Text, View } from "react-native";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 export type SelectedPhoto = {
   base64: string;
@@ -158,7 +159,10 @@ export function PhotoUploadBox({ photos, onPhotosChange }: PhotoUploadBoxProps) 
           disabled={isAtLimit}
           className="h-14 flex-1 items-center justify-center rounded-lg bg-emerald-100 active:opacity-80 disabled:opacity-50"
         >
-          <Text className="text-sm font-bold text-emerald-900">📷 Tirar foto</Text>
+          <View className="flex-row items-center gap-2">
+            <AppIcon name="camera" size={18} />
+            <Text className="text-sm font-bold text-emerald-900">Tirar foto</Text>
+          </View>
         </Pressable>
 
         <Pressable
@@ -166,7 +170,10 @@ export function PhotoUploadBox({ photos, onPhotosChange }: PhotoUploadBoxProps) 
           disabled={isAtLimit}
           className="h-14 flex-1 items-center justify-center rounded-lg bg-emerald-100 active:opacity-80 disabled:opacity-50"
         >
-          <Text className="text-sm font-bold text-emerald-900">🖼️ Enviar da galeria</Text>
+          <View className="flex-row items-center gap-2">
+            <AppIcon name="image" size={18} />
+            <Text className="text-sm font-bold text-emerald-900">Enviar da galeria</Text>
+          </View>
         </Pressable>
       </View>
     </View>

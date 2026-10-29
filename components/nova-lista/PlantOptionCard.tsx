@@ -1,8 +1,9 @@
 import { Pressable, Text, View } from "react-native";
+import { AppIcon, type AppIconName } from "@/components/ui/AppIcon";
 
 type PlantOptionCardProps = {
   name: string;
-  icon: string;
+  icon: AppIconName;
   selected?: boolean;
   onPress?: () => void;
 };
@@ -28,7 +29,7 @@ export function PlantOptionCard({
         </View>
       )}
 
-      <Text className="text-3xl">{icon}</Text>
+      <AppIcon name={icon} size={32} color="#047857" />
 
       <Text className="mt-2 text-center text-sm font-semibold text-slate-700">
         {name}

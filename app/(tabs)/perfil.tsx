@@ -116,20 +116,20 @@ export default function PerfilScreen() {
         <View className="px-5 pt-5">
           <ProfileSection title="Perfil">
             <ProfileRow
-              icon="👤"
+              icon="user"
               iconBg="bg-violet-100"
               label="Nome completo"
               value={perfil?.name}
               onPress={() => router.push("/editar-perfil/nome" as any)}
             />
             <ProfileRow
-              icon="📧"
+              icon="envelope"
               iconBg="bg-sky-100"
               label="E-mail"
               value={perfil?.email}
             />
             <ProfileRow
-              icon="🔒"
+              icon="lock"
               iconBg="bg-emerald-100"
               label="Senha"
               value="••••••••"
@@ -140,21 +140,21 @@ export default function PerfilScreen() {
 
           <ProfileSection title="Vínculos acadêmicos">
             <ProfileRow
-              icon="🏛️"
+              icon="buildings"
               iconBg="bg-amber-100"
               label="Instituição"
               value={perfil?.institution?.name ?? "Sem instituição vinculada"}
               onPress={() => router.push("/editar-perfil/instituicao" as any)}
             />
             <ProfileRow
-              icon="📅"
+              icon="calendar"
               iconBg="bg-orange-100"
               label="Período letivo"
               value={perfil?.academic_period?.name ?? "Sem período vinculado"}
               onPress={() => router.push("/editar-perfil/turma" as any)}
             />
             <ProfileRow
-              icon="👥"
+              icon="users"
               iconBg="bg-violet-100"
               label="Turma"
               value={perfil?.turma?.name ?? "Sem turma vinculada"}
@@ -165,7 +165,7 @@ export default function PerfilScreen() {
 
           <ProfileSection title="Aplicativo">
             <ProfileRow
-              icon="ℹ️"
+              icon="info"
               iconBg="bg-sky-100"
               label="Sobre"
               value="Informações e versão do app"

@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from "react-native";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 import { StatusBadge } from "./StatusBadge";
 
@@ -35,8 +36,9 @@ export function FormularioCard({
       <Text className="mb-3 text-sm text-slate-400">{dateLabel}</Text>
 
       <View className="flex-row items-center">
-        <Text className="text-sm text-slate-500">
-          📷 {photos} {photos === 1 ? "foto" : "fotos"}
+        <AppIcon name="camera" size={16} color="#64748b" />
+        <Text className="ml-1 text-sm text-slate-500">
+          {photos} {photos === 1 ? "foto" : "fotos"}
         </Text>
       </View>
     </Pressable>

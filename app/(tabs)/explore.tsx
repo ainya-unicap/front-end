@@ -6,10 +6,14 @@ import { extractApiError } from "@/lib/apiError";
 import { getProfile } from "@/database/user";
 import { CanteiroCard } from "@/components/canteiros/CanteiroCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import {
+  getPlantCategoryIcon,
+  type AppIconName,
+} from "@/components/ui/AppIcon";
 
 type CanteiroItem = {
   id: string;
-  icon: string;
+  icon: AppIconName;
   name: string;
   description: string;
   totalRegistros: number;
@@ -20,20 +24,6 @@ type CanteiroItem = {
 
 const SEMANAS_ACOMPANHAMENTO = 12;
 const DIAS_PARA_PAUSAR = 14;
-
-const getCategoryIcon = (category: string): string => {
-  const iconMap: Record<string, string> = {
-    'CACTACEA': '🌵',
-    'CULTURA_ANUAL': '🌾',
-    'GRAMINEA_PORTE_ALTO': '🌱',
-    'GRAMINEA_PORTE_BAIXO': '🍀',
-    'GRAMINEA_PORTE_MEDIO': '🌿',
-    'LEGUMINOSA_ARBUSTIVA': '🌳',
-    'LEGUMINOSA_HERBACEA': '🍃',
-    'OLEAGINOSA_FORRAGEIRA': '🌻',
-  };
-  return iconMap[category] || '🌱';
-};
 
 const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
   const listas: any[] = canteiro.listaDeFormularios ?? [];
@@ -71,7 +61,7 @@ const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
 
   return {
     id: canteiro.id,
-    icon: getCategoryIcon(canteiro.plant?.category),
+    icon: getPlantCategoryIcon(canteiro.plant?.category),
     name: canteiro.name || canteiro.plant?.name || 'Canteiro',
     description: canteiro.plant?.name || 'Planta',
     totalRegistros,
