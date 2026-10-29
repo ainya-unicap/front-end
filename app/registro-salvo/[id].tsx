@@ -16,7 +16,6 @@ import { SuccessCard } from "@/components/registro-salvo/SuccessCard";
 import { SummaryMetricCard } from "@/components/registro-salvo/SummaryMetricCard";
 import { SavedSectionCard } from "@/components/registro-salvo/SavedSectionCard";
 import { PhotoPreviewList } from "@/components/registro-salvo/PhotoPreviewList";
-import { MeasurementList } from "@/components/registro-salvo/MeasurementList";
 import { SavedChecklistList } from "@/components/registro-salvo/SavedChecklistList";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -48,16 +47,6 @@ function formatDateTimeRange(formulario: any) {
     : "--:--";
 
   return `${date} · ${startTime} – ${endTime}`;
-}
-
-function getMeasurementValue(formulario: any, keyword: string) {
-  const measurement = formulario.measurements?.find((item: any) =>
-    item.template?.field_name?.toLowerCase().includes(keyword.toLowerCase())
-  );
-
-  if (!measurement) return "—";
-
-  return `${measurement.value}${measurement.template?.unit || ""}`;
 }
 
 const checklistFields = [
@@ -147,9 +136,8 @@ export default function RegistroSalvoScreen() {
           <View className="mt-6 gap-3">
             <Skeleton width="100%" height={96} radius={16} />
             <View className="flex-row gap-3">
-              <Skeleton width="31%" height={72} radius={16} />
-              <Skeleton width="31%" height={72} radius={16} />
-              <Skeleton width="31%" height={72} radius={16} />
+              <Skeleton width="48%" height={72} radius={16} />
+              <Skeleton width="48%" height={72} radius={16} />
             </View>
             <Skeleton width="100%" height={140} radius={16} />
             <Skeleton width="100%" height={140} radius={16} />
@@ -162,20 +150,12 @@ export default function RegistroSalvoScreen() {
   const altura =
     formulario.estimated_height_cm != null
       ? `${formulario.estimated_height_cm} cm`
-      : getMeasurementValue(formulario, "altura");
-  const cobertura = getMeasurementValue(formulario, "cobertura");
+      : "—";
   const totalFotos = formulario.photos?.length || 0;
   const checklistItems = getChecklistItems(formulario);
   const totalChecklist = checklistItems.length;
   const totalChecklistChecked =
     checklistItems.filter((item: any) => item.checked).length || 0;
-  const measurements =
-    formulario.estimated_height_cm != null
-      ? (formulario.measurements || []).filter(
-          (measurement: any) =>
-            !measurement.template?.field_name?.toLowerCase().includes("altura")
-        )
-      : formulario.measurements || [];
 
   return (
     <View className="flex-1 bg-slate-50">
@@ -212,16 +192,11 @@ export default function RegistroSalvoScreen() {
 
         <View className="mb-4 flex-row gap-3">
           <SummaryMetricCard value={altura} label="Altura" />
-          <SummaryMetricCard value={cobertura} label="Cobertura" />
           <SummaryMetricCard value={`${totalFotos}`} label="Fotos" />
         </View>
 
         <SavedSectionCard title="Fotos registradas" icon="📷">
           <PhotoPreviewList photos={formulario.photos || []} />
-        </SavedSectionCard>
-
-        <SavedSectionCard title="Medições" icon="📏">
-          <MeasurementList measurements={measurements} />
         </SavedSectionCard>
 
         <SavedSectionCard title="Dados do registro" icon="🌱">
@@ -258,7 +233,7 @@ export default function RegistroSalvoScreen() {
 
         <View className="mt-2 flex-row gap-3">
           <Pressable
-            onPress={() => router.replace("/")}
+            onPress={() => router.replace("/(tabs)")}
             className="h-14 flex-1 items-center justify-center rounded-2xl bg-slate-200 active:opacity-80"
           >
             <Text className="text-base font-bold text-slate-700">
