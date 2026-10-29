@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { isAxiosError } from "axios";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import useSWR, { mutate } from "swr";
 
 import { getCanteirosByUser } from "@/database/canteiros";
@@ -80,7 +80,9 @@ export default function NovoRelatorioScreen() {
     return arr.map(mapCanteiro);
   }, [canteirosData]);
 
-  const [selectedCanteiroId, setCanteiroId] = useState("");
+  // Canteiro já escolhido no popup da Home, se houver
+  const { canteiro_id } = useLocalSearchParams<{ canteiro_id?: string }>();
+  const [selectedCanteiroId, setCanteiroId] = useState(canteiro_id ?? "");
   const [reportType, setReportType] = useState<ReportType>("analise");
   const [generating, setGenerating] = useState(false);
 

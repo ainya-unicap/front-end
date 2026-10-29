@@ -1,20 +1,81 @@
+import { useMemo, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import useSWR from "swr";
 import { StatusBar } from "expo-status-bar";
 
 import { getAlunoHome } from "@/database/alunos";
+import { getCanteirosByUser } from "@/database/canteiros";
 import { getProfile } from "@/database/user";
 import { type AlunoResumo } from "@/services/api";
 
+import {
+  CanteiroPickerModal,
+  type CanteiroOption,
+} from "@/components/home/CanteiroPickerModal";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { QuickActionCard } from "@/components/home/QuickActionCard";
 import { RecentRecordCard } from "@/components/home/RecentRecordCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 
+// Emoji por categoria de planta forrageira
+const CATEGORY_ICON: Record<string, string> = {
+  CACTACEA: "🌵",
+  CULTURA_ANUAL: "🌾",
+  GRAMINEA_PORTE_ALTO: "🌱",
+  GRAMINEA_PORTE_BAIXO: "🍀",
+  GRAMINEA_PORTE_MEDIO: "🌿",
+  LEGUMINOSA_ARBUSTIVA: "🌳",
+  LEGUMINOSA_HERBACEA: "🍃",
+  OLEAGINOSA_FORRAGEIRA: "🌻",
+};
+
+type Picker = "registro" | "relatorio" | null;
+
 export default function HomeScreen() {
   // Uma única chamada (GET /alunos/:userId/home) traz totais e registros recentes
   const { data: home, isLoading: loading, error } = useSWR("home", getAlunoHome);
+
+  // Canteiros do aluno para os popups (mesma chave da aba Canteiros)
+  const { data: canteirosData, isLoading: loadingCanteiros } = useSWR(
+    "user-canteiros",
+    getCanteirosByUser
+  );
+  const canteiros: CanteiroOption[] = useMemo(() => {
+    const arr: any[] = Array.isArray(canteirosData)
+      ? canteirosData
+      : (canteirosData?.data ?? []);
+
+    return arr.map((canteiro) => ({
+      id: String(canteiro.id),
+      name: canteiro.name ?? canteiro.plant?.name ?? "Canteiro",
+      plantName: canteiro.plant?.name ?? "Planta",
+      icon: CATEGORY_ICON[canteiro.plant?.category] ?? "🌱",
+      // Se houver mais de uma lista, vale a primeira (igual à aba Canteiros)
+      listId: canteiro.listaDeFormularios?.[0]?.id
+        ? String(canteiro.listaDeFormularios[0].id)
+        : null,
+    }));
+  }, [canteirosData]);
+
+  const [picker, setPicker] = useState<Picker>(null);
+
+  function handleSelecionarCanteiro(canteiro: CanteiroOption) {
+    const destino = picker;
+    setPicker(null);
+
+    if (destino === "registro") {
+      router.push({ pathname: "/registro", params: { list_id: canteiro.listId ?? "" } });
+    } else if (destino === "relatorio") {
+      router.push({ pathname: "/relatorios/novo", params: { canteiro_id: canteiro.id } });
+    }
+  }
+
+  function handleCriarCanteiro() {
+    setPicker(null);
+    router.push("/nova-lista");
+  }
+
   // Mesma chave do perfil: o nome fica em cache compartilhado entre as telas
   const { data: perfilResp } = useSWR("perfil", () => getProfile());
   const perfil = (perfilResp as any)?.data ?? perfilResp;
@@ -45,31 +106,25 @@ export default function HomeScreen() {
 
         <View className="mb-8 flex-row flex-wrap justify-between gap-3">
           <QuickActionCard
+            fullWidth
             icon="📝"
             title="Novo Registro"
             subtitle="Registro semanal"
-            onPress={() => router.push("/registro")}
+            onPress={() => setPicker("registro")}
           />
 
           <QuickActionCard
             icon="🌱"
-            title="Canteiros"
-            subtitle="Minhas plantas"
+            title="Novo Canteiro"
+            subtitle="Cadastrar planta"
             onPress={() => router.push("/nova-lista")}
           />
 
           <QuickActionCard
             icon="📄"
-            title="Resumo" // Palavra alterada conforme solicitado
-            subtitle="Gerar ou editar"
-            onPress={() => router.push("/relatorios")}
-          />
-
-          <QuickActionCard
-            icon="📊"
-            title="Histórico"
-            subtitle="Evolução"
-            onPress={() => router.push("/relatorios")}
+            title="Novo Relatório"
+            subtitle="Gerar com IA"
+            onPress={() => setPicker("relatorio")}
           />
         </View>
 
@@ -119,6 +174,21 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
+      <CanteiroPickerModal
+        visible={picker !== null}
+        title={
+          picker === "relatorio"
+            ? "Relatório de qual canteiro?"
+            : "Registro de qual canteiro?"
+        }
+        subtitle="Escolha o canteiro para continuar."
+        canteiros={canteiros}
+        loading={loadingCanteiros}
+        requireList={picker === "registro"}
+        onClose={() => setPicker(null)}
+        onSelect={handleSelecionarCanteiro}
+        onCreateCanteiro={handleCriarCanteiro}
+      />
     </View>
   );
 }
