@@ -48,7 +48,8 @@ const CATEGORY_ICON: Record<string, string> = {
 
 function mapCanteiro(canteiro: any): CanteiroOption {
   const listas: any[] = canteiro.listaDeFormularios ?? [];
-  const lista = listas[0];
+  // O relatório simples usa a lista que tem registros (senão, a primeira)
+  const lista = listas.find((item) => (item._count?.formularios ?? 0) > 0) ?? listas[0];
   // Soma os formulários de todas as listas do canteiro
   const totalForms = listas.reduce(
     (sum, item) => sum + (item._count?.formularios ?? 0),
@@ -140,7 +141,10 @@ export default function NovoRelatorioScreen() {
         return;
       }
 
-      const relatorio = await generateRelatorio({ list_id: canteiro.listId });
+      const relatorio = await generateRelatorio({
+        list_id: canteiro.listId,
+        tipo: "simples",
+      });
       await mutate("relatorios");
       const relatorioId =
         relatorio?.id ?? relatorio?.data?.id ?? relatorio?.relatorio?.id;
@@ -183,8 +187,7 @@ export default function NovoRelatorioScreen() {
 
         <SectionCard title="Escolha o canteiro" icon="🌱">
           <Text className="mb-4 text-sm leading-5 text-slate-400">
-            A lista de formulários do canteiro será usada como base para a IA
-            gerar o relatório automaticamente.
+            Os registros do canteiro escolhido são a base do relatório.
           </Text>
 
           {isLoading ? (
@@ -214,9 +217,9 @@ export default function NovoRelatorioScreen() {
             <AnalysisTypeCard
               icon="📋"
               title="Relatório simples"
-              subtitle="Seções obrigatórias"
+              subtitle="Todos os registros"
               selected={reportType === "simples"}
-              disabled
+              onPress={() => setReportType("simples")}
             />
 
             <AnalysisTypeCard
@@ -232,13 +235,27 @@ export default function NovoRelatorioScreen() {
         <View className="flex-row rounded-2xl bg-emerald-50 p-4">
           <Text className="mr-2 text-base">✨</Text>
           <Text className="flex-1 text-sm leading-5 text-slate-600">
-            <Text className="font-bold text-emerald-900">
-              A IA vai gerar o relatório{"\n"}
-            </Text>
-            Com base nos {canteiro?.totalForms ?? 0} formulários do{" "}
-            {canteiro?.name ?? "canteiro"}, a IA vai preencher automaticamente a
-            Introdução, Objetivo, Desenvolvimento e Considerações finais. Você
-            poderá editar tudo antes de submeter.
+            {reportType === "simples" ? (
+              <>
+                <Text className="font-bold text-emerald-900">
+                  Todos os registros, organizados{"\n"}
+                </Text>
+                Os {canteiro?.totalForms ?? 0} formulários do{" "}
+                {canteiro?.name ?? "canteiro"} serão reunidos em ordem
+                cronológica, semana a semana, com clima, fase, altura, manejo,
+                fotos e observações de cada registro.
+              </>
+            ) : (
+              <>
+                <Text className="font-bold text-emerald-900">
+                  A IA vai gerar o relatório{"\n"}
+                </Text>
+                Com base nos {canteiro?.totalForms ?? 0} formulários do{" "}
+                {canteiro?.name ?? "canteiro"}, a IA vai preencher
+                automaticamente a Introdução, o Objetivo, o Desenvolvimento e as
+                Considerações finais.
+              </>
+            )}
           </Text>
         </View>
       </ScrollView>

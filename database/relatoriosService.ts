@@ -3,7 +3,8 @@ import * as FileSystem from "expo-file-system/legacy";
 import { getAccessToken } from "./auth";
 import { api } from "./index";
 
-export async function generateRelatorio(data: { list_id: string }) {
+// tipo = 'simples' já devolve o relatório com todos os formulários da lista organizados
+export async function generateRelatorio(data: { list_id: string; tipo?: 'simples' }) {
     try {
         const response = await api.post('relatorios/generate', data);
         return response.data;
