@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppIcon, type AppIconName } from "@/components/ui/AppIcon";
 
 export type CanteiroOption = {
@@ -42,6 +43,7 @@ export function CanteiroPickerModal({
   onSelect,
   onCreateCanteiro,
 }: CanteiroPickerModalProps) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal
       visible={visible}
@@ -53,7 +55,8 @@ export function CanteiroPickerModal({
         {/* O toque dentro do painel não fecha o popup */}
         <Pressable
           onPress={() => {}}
-          className="max-h-[70%] rounded-t-3xl bg-white p-6 shadow-xl"
+          className="max-h-[70%] rounded-t-3xl bg-white px-6 pt-6 shadow-xl"
+          style={{ paddingBottom: insets.bottom + 24 }}
         >
           <View className="mb-1 flex-row items-center justify-between">
             <Text

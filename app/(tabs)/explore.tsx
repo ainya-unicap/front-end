@@ -1,4 +1,5 @@
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import useSWR, { mutate } from "swr";
 import { deleteCanteiro, getCanteirosByUser } from "@/database/canteiros";
@@ -72,6 +73,7 @@ const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
 };
 
 export default function CanteirosScreen() {
+  const insets = useSafeAreaInsets();
   const { data: canteiros, error, isLoading } = useSWR('user-canteiros', getCanteirosByUser);
   // Período letivo do cabeçalho vem do perfil do aluno
   const { data: perfilResp } = useSWR('perfil', () => getProfile());
@@ -115,7 +117,8 @@ export default function CanteirosScreen() {
     <View className="flex-1 bg-slate-50">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-32 pt-14"
+        contentContainerClassName="px-5 pb-32"
+        contentContainerStyle={{ paddingTop: insets.top + 12 }}
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-6 flex-row items-end justify-between">

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
   Alert,
@@ -66,6 +67,7 @@ function dataParaISOString(data: string) {
 
 // Com `id` na rota a tela edita um registro existente; sem ele, cria um novo.
 export default function RegistroScreen() {
+  const insets = useSafeAreaInsets();
   const { list_id, id } = useLocalSearchParams<{ list_id?: string; id?: string }>();
 
   const { data: formularioResp, isLoading } = useSWR(
@@ -77,7 +79,7 @@ export default function RegistroScreen() {
   // O formulário só monta depois que o registro chegou, já com os valores iniciais
   if (id && (isLoading || !formulario)) {
     return (
-      <View className="flex-1 bg-slate-50 px-5 pt-14">
+      <View className="flex-1 bg-slate-50 px-5" style={{ paddingTop: insets.top + 12 }}>
         <Skeleton width="60%" height={28} radius={8} />
         <View className="mt-6 gap-3">
           <Skeleton width="100%" height={140} radius={16} />
@@ -99,6 +101,7 @@ type RegistroFormProps = {
 
 function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
   const editing = !!editId;
+  const insets = useSafeAreaInsets();
 
   const { data: lista } = useSWR(list_id ? `lista-${list_id}` : null, () =>
     getListaById(list_id as string)
@@ -279,7 +282,8 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
     <View className="flex-1 bg-slate-50">
       <KeyboardAwareScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-10 pt-14"
+        contentContainerClassName="px-5"
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
         bottomOffset={40}
       >

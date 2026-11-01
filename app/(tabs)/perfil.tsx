@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
@@ -12,6 +13,7 @@ import { getProfile, uploadProfileAvatar } from "@/database/user";
 import { logout } from "@/database/auth";
 
 export default function PerfilScreen() {
+  const insets = useSafeAreaInsets();
   const { data: perfilResp, isLoading, mutate } = useSWR("perfil", () => getProfile());
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   // A API pode devolver o objeto direto ou embrulhado em { data: {...} }
@@ -73,7 +75,7 @@ export default function PerfilScreen() {
     return (
       <View className="flex-1 bg-slate-50">
         {/* Skeleton do cabeçalho */}
-        <View className="items-center gap-3 rounded-b-3xl bg-emerald-900 px-6 pb-8 pt-16">
+        <View className="items-center gap-3 rounded-b-3xl bg-emerald-900 px-6 pb-8" style={{ paddingTop: insets.top + 16 }}>
           <Skeleton width={80} height={80} radius={40} />
           <Skeleton width={160} height={20} />
           <Skeleton width={200} height={14} />

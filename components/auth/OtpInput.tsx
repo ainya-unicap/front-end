@@ -1,4 +1,5 @@
 import { ComponentRef, useRef } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text, TextInput, View } from "react-native";
 
 type OtpInputProps = {
@@ -53,7 +54,7 @@ export function OtpInput({
     <View
       accessible
       accessibilityLabel={label}
-      className="mb-2 flex-row justify-between"
+      className="-mx-1 mb-2 flex-row"
     >
       {Array.from({ length }, (_, index) => {
         const filled = !!value[index];
@@ -77,7 +78,7 @@ export function OtpInput({
             autoFocus={autoFocus && index === 0}
             selectTextOnFocus
             accessibilityLabel={`${label}, dígito ${index + 1} de ${length}`}
-            className={`h-14 w-12 rounded-2xl border text-center text-xl font-extrabold text-slate-900 ${
+            className={`mx-1 h-14 flex-1 rounded-2xl border text-center text-xl font-extrabold text-slate-900 ${
               hasError
                 ? "border-red-500 bg-white"
                 : filled

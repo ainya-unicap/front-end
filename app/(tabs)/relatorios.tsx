@@ -1,4 +1,5 @@
 import { Alert, View, Text, TouchableOpacity, FlatList, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from 'expo-router';
 import { AntDesign } from '@expo/vector-icons';
 import { getRelatorios } from '@/database/relatorios';
@@ -26,6 +27,7 @@ function getStatusStyle(status: string) {
 }
 
 export default function ListaRelatoriosScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const { data, error, isLoading } = useSWR('relatorios', getRelatorios);
@@ -107,7 +109,10 @@ export default function ListaRelatoriosScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#f8fafc] px-5 pt-14 pb-[100px]">
+    <View
+      className="flex-1 bg-[#f8fafc] px-5"
+      style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 76 }}
+    >
       <View className="flex-row justify-between items-end mb-6">
         <Text className="text-2xl font-bold text-[#0f172a]">Meus Relatórios</Text>
         <Text className="text-gray-400 text-sm mb-1 font-medium">

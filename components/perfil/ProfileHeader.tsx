@@ -1,4 +1,5 @@
 import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Camera } from "lucide-react-native";
 
 type ProfileHeaderProps = {
@@ -24,8 +25,9 @@ export function ProfileHeader({
   isUploadingAvatar = false,
   onChangeAvatar,
 }: ProfileHeaderProps) {
+  const insets = useSafeAreaInsets();
   return (
-    <View className="items-center rounded-b-3xl bg-emerald-900 px-6 pb-8 pt-14">
+    <View className="items-center rounded-b-3xl bg-emerald-900 px-6 pb-8" style={{ paddingTop: insets.top + 16 }}>
       <Pressable
         onPress={onChangeAvatar}
         disabled={!onChangeAvatar || isUploadingAvatar}

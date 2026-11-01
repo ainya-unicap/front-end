@@ -1,4 +1,5 @@
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { AntDesign } from "@expo/vector-icons";
 import useSWR from "swr";
@@ -54,6 +55,7 @@ async function fetchFormularios(canteiroId: string) {
 }
 
 export default function ListaFormulariosScreen() {
+  const insets = useSafeAreaInsets();
   const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
   const canteiroName = name || "Canteiro";
 
@@ -72,7 +74,10 @@ export default function ListaFormulariosScreen() {
   return (
     <View className="flex-1 bg-slate-50">
       {/* Cabeçalho */}
-      <View className="flex-row items-center justify-between px-5 pb-4 pt-14">
+      <View
+        className="flex-row items-center justify-between px-5 pb-4"
+        style={{ paddingTop: insets.top + 12 }}
+      >
         <View className="flex-1 flex-row items-center">
           <Pressable
             onPress={() => router.back()}
@@ -118,7 +123,10 @@ export default function ListaFormulariosScreen() {
       </ScrollView>
 
       {/* Botão flutuante: novo registro semanal */}
-      <View className="absolute bottom-8 left-0 right-0 items-center">
+      <View
+        className="absolute left-0 right-0 items-center"
+        style={{ bottom: insets.bottom + 16 }}
+      >
         <Pressable
           onPress={handleNovoRegistro}
           className="h-16 w-16 items-center justify-center rounded-full bg-emerald-800 shadow-lg active:opacity-80"

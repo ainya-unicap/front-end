@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
   Alert,
@@ -93,6 +94,7 @@ function getPhenologicalStageLabel(stage?: string) {
 }
 
 export default function RegistroSalvoScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const {
@@ -132,7 +134,10 @@ export default function RegistroSalvoScreen() {
   if (isLoading || !formulario) {
     return (
       <View className="flex-1 bg-slate-50">
-        <ScrollView contentContainerClassName="px-5 pb-10 pt-14">
+        <ScrollView
+          contentContainerClassName="px-5"
+          contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }}
+        >
           <Skeleton width="60%" height={28} radius={8} />
           <View className="mt-6 gap-3">
             <Skeleton width="100%" height={96} radius={16} />
@@ -162,7 +167,8 @@ export default function RegistroSalvoScreen() {
     <View className="flex-1 bg-slate-50">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-10 pt-14"
+        contentContainerClassName="px-5"
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-5 flex-row items-center justify-between">

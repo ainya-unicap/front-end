@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
   Alert,
@@ -64,6 +65,7 @@ const ANALYSIS_TYPES: AnalysisType[] = [
 ];
 
 export default function NovaListaScreen() {
+  const insets = useSafeAreaInsets();
   const [selectedPlantId, setPlantId] = useState<string>("");
   const [analysisTypeId, setAnalysisTypeId] = useState<string>(
     ANALYSIS_TYPES[0].id
@@ -122,15 +124,15 @@ export default function NovaListaScreen() {
       // Revalida canteiros (telas Canteiros e Novo relatório) e a home
       await Promise.all([mutate("user-canteiros"), mutate("home")]);
 
-      Alert.alert("Pronto!", "Lista de formulários criada com sucesso.");
+      Alert.alert("Pronto!", "Canteiro criado com sucesso.");
       router.back();
     } catch (error) {
-      console.error("Erro ao criar lista de formulários:", error);
+      console.error("Erro ao criar canteiro:", error);
       Alert.alert(
         "Erro ao criar",
         extractApiError(
           error,
-          "Não foi possível criar a lista de formulários agora."
+          "Não foi possível criar o canteiro agora."
         )
       );
     } finally {
@@ -145,7 +147,7 @@ export default function NovaListaScreen() {
         contentContainerClassName="pb-32"
         showsVerticalScrollIndicator={false}
       >
-        <HeaderStack title="Nova lista de formulários" />
+        <HeaderStack title="Novo canteiro" />
 
         {/* Escolha a planta */}
         <Text className="mb-3 text-lg font-bold text-slate-900">
@@ -242,7 +244,10 @@ export default function NovaListaScreen() {
       </ScrollView>
 
       {/* Footer fixo com a ação principal */}
-      <View className="absolute bottom-0 left-0 right-0 border-t border-slate-100 bg-slate-50 px-5 pb-8 pt-3">
+      <View
+        className="absolute bottom-0 left-0 right-0 border-t border-slate-100 bg-slate-50 px-5 pt-3"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+      >
         <Pressable
           onPress={handleCreate}
           disabled={saving}
@@ -252,7 +257,7 @@ export default function NovaListaScreen() {
             <ActivityIndicator color="#ffffff" />
           ) : (
             <Text className="text-base font-bold text-white">
-              Criar lista de formulários
+              Criar canteiro
             </Text>
           )}
         </Pressable>

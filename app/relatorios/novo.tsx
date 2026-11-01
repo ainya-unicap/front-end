@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
   Alert,
@@ -59,6 +60,7 @@ function mapCanteiro(canteiro: any): CanteiroOption {
 type ReportType = "simples" | "analise";
 
 export default function NovoRelatorioScreen() {
+  const insets = useSafeAreaInsets();
   const { data: canteirosData, isLoading } = useSWR("user-canteiros", () =>
     getCanteirosByUser()
   );
@@ -252,7 +254,10 @@ export default function NovoRelatorioScreen() {
       </ScrollView>
 
       {/* Footer fixo com a ação principal */}
-      <View className="absolute bottom-0 left-0 right-0 border-t border-slate-100 bg-slate-50 px-5 pb-8 pt-3">
+      <View
+        className="absolute bottom-0 left-0 right-0 border-t border-slate-100 bg-slate-50 px-5 pt-3"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+      >
         <Pressable
           onPress={handleGerar}
           disabled={generating}
