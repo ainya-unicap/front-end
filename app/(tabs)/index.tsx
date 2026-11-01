@@ -96,17 +96,17 @@ export default function HomeScreen() {
         <View className="mb-8 flex-row flex-wrap justify-between gap-3">
           <QuickActionCard
             fullWidth
-            icon="note"
-            title="Novo Registro"
-            subtitle="Registro semanal"
-            onPress={() => setPicker("registro")}
-          />
-
-          <QuickActionCard
             icon="plant"
             title="Novo Canteiro"
             subtitle="Cadastrar planta"
             onPress={() => router.push("/nova-lista")}
+          />
+
+          <QuickActionCard
+            icon="note"
+            title="Novo Formulário"
+            subtitle="Formulário semanal"
+            onPress={() => setPicker("registro")}
           />
 
           <QuickActionCard
@@ -118,7 +118,7 @@ export default function HomeScreen() {
         </View>
 
         <Text className="mb-3 text-2xl font-bold text-slate-950">
-          Registros recentes
+          Formulários recentes
         </Text>
 
         <View className="lg:flex-row gap-2 lg:flex-wrap">
@@ -140,7 +140,7 @@ export default function HomeScreen() {
           ) : error ? (
             <View className="items-center rounded-2xl bg-white p-8">
               <Text className="text-base font-semibold text-slate-500">
-                Não foi possível carregar seus registros
+                Não foi possível carregar seus formulários
               </Text>
               <Text className="mt-1 text-sm text-slate-400">
                 Verifique sua conexão e tente novamente
@@ -149,10 +149,10 @@ export default function HomeScreen() {
           ) : registrosRecentes.length === 0 ? (
             <View className="items-center rounded-2xl bg-white p-8">
               <Text className="text-base font-semibold text-slate-500">
-                Não há relatórios
+                Nenhum formulário ainda
               </Text>
               <Text className="mt-1 text-sm text-slate-400">
-                Crie seu primeiro registro
+                Crie seu primeiro formulário
               </Text>
             </View>
           ) : (
@@ -168,7 +168,7 @@ export default function HomeScreen() {
         title={
           picker === "relatorio"
             ? "Relatório de qual canteiro?"
-            : "Registro de qual canteiro?"
+            : "Formulário de qual canteiro?"
         }
         subtitle="Escolha o canteiro para continuar."
         canteiros={canteiros}
