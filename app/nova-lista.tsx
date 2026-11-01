@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
@@ -19,7 +19,7 @@ import { extractApiError } from "@/lib/apiError";
 
 import HeaderStack from "@/components/navigation/headerStack";
 import Warning from "@/components/forms/warning";
-import { PlantOptionCard } from "@/components/nova-lista/PlantOptionCard";
+import { PlantSelect } from "@/components/nova-lista/PlantSelect";
 import { AnalysisTypeCard } from "@/components/nova-lista/AnalysisTypeCard";
 import { LabeledField } from "@/components/nova-lista/LabeledField";
 import { AppIcon, getPlantCategoryIcon, type AppIconName } from "@/components/ui/AppIcon";
@@ -187,33 +187,17 @@ export default function NovaListaScreen() {
           <Warning text="A planta não pode ser trocada porque este canteiro já tem formulários. Você pode alterar o nome." />
         ) : null}
 
-        {loadingPlantas ? (
-          <ActivityIndicator color="#065f46" className="mb-6" />
-        ) : plantasError || plantas.length === 0 ? (
-          <Text className="mb-6 text-sm text-slate-400">
-            {plantasError
-              ? "Não foi possível carregar as plantas."
-              : "Nenhuma planta disponível para este semestre."}
-          </Text>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mb-6 -mx-1 px-1"
-          >
-            {plantas.map((plant) => (
-              <PlantOptionCard
-                key={plant.id}
-                name={plant.name}
-                icon={plant.icon}
-                selected={plant.id === plantId}
-                onPress={() => {
-                  if (!plantaTravada) setPlantId(plant.id);
-                }}
-              />
-            ))}
-          </ScrollView>
-        )}
+        <PlantSelect
+          items={plantas}
+          value={plantId || null}
+          onChange={setPlantId}
+          loading={loadingPlantas}
+          error={plantasError ? "Não foi possível carregar as plantas." : undefined}
+          disabled={plantaTravada}
+          emptyText={
+            editing ? "Nenhuma planta disponível." : "Nenhuma planta disponível para este semestre."
+          }
+        />
 
         {/* Tipo de análise (só ao criar: filtra as plantas por semestre) */}
         {editing ? null : (
