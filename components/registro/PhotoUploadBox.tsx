@@ -9,8 +9,8 @@ export type SelectedPhoto = {
   fileName: string;
 };
 
-export const MIN_REGISTRO_PHOTOS = 5;
-export const MAX_REGISTRO_PHOTOS = 10;
+// Mesmo limite do backend (5 fotos por formulário); não há mínimo
+export const MAX_REGISTRO_PHOTOS = 5;
 
 type PhotoUploadBoxProps = {
   photos: SelectedPhoto[];
@@ -23,7 +23,7 @@ async function pickPhoto(
   onPhotosSelected: (photos: SelectedPhoto[]) => void
 ) {
   if (remainingSlots <= 0) {
-    Alert.alert("Limite de fotos", `Cada registro aceita no máximo ${MAX_REGISTRO_PHOTOS} fotos.`);
+    Alert.alert("Limite de fotos", `Cada formulário aceita no máximo ${MAX_REGISTRO_PHOTOS} fotos.`);
     return;
   }
 
@@ -119,7 +119,7 @@ export function PhotoUploadBox({ photos, onPhotosChange }: PhotoUploadBoxProps) 
   return (
     <View>
       <Text className="mb-3 text-center text-sm font-medium text-slate-600">
-        {photos.length} de {MAX_REGISTRO_PHOTOS} fotos · mínimo de {MIN_REGISTRO_PHOTOS}
+        {photos.length} de {MAX_REGISTRO_PHOTOS} fotos
       </Text>
 
       {photos.length > 0 ? (
@@ -144,7 +144,7 @@ export function PhotoUploadBox({ photos, onPhotosChange }: PhotoUploadBoxProps) 
       ) : null}
 
       <Text className="mb-3 text-center text-sm text-slate-400">
-        Escolha de {MIN_REGISTRO_PHOTOS} a {MAX_REGISTRO_PHOTOS} fotos. A data e hora são adicionadas automaticamente.
+        Adicione até {MAX_REGISTRO_PHOTOS} fotos (a quantidade é livre). A data e hora são adicionadas automaticamente.
       </Text>
 
       {isAtLimit ? (

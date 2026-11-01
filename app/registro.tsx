@@ -27,7 +27,6 @@ import { SectionCard } from "@/components/registro/SectionCard";
 import { ChecklistItem } from "@/components/registro/ChecklistItem";
 import {
   MAX_REGISTRO_PHOTOS,
-  MIN_REGISTRO_PHOTOS,
   PhotoUploadBox,
 } from "@/components/registro/PhotoUploadBox";
 import type { SelectedPhoto } from "@/components/registro/PhotoUploadBox";
@@ -151,10 +150,10 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
       return;
     }
 
-    if (photos.length < MIN_REGISTRO_PHOTOS || photos.length > MAX_REGISTRO_PHOTOS) {
+    if (photos.length > MAX_REGISTRO_PHOTOS) {
       Alert.alert(
-        "Quantidade de fotos inválida",
-        `Adicione no mínimo ${MIN_REGISTRO_PHOTOS} e no máximo ${MAX_REGISTRO_PHOTOS} fotos para salvar o registro.`
+        "Muitas fotos",
+        `Um formulário aceita no máximo ${MAX_REGISTRO_PHOTOS} fotos.`
       );
       return;
     }
