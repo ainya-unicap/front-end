@@ -10,13 +10,15 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import "@/global.css";
 import { initDatabase } from '@/database/localDb';
 
+// Cria a tabela local de sessão uma única vez, antes de qualquer tela
+initDatabase();
+
 export const unstable_settings = {
   anchor: 'index',
 };
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  initDatabase();
 
   return (
 
