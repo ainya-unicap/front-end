@@ -9,12 +9,12 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import useSWR, { mutate } from "swr";
 
 import { getPlantas, type SemesterFocus } from "@/database/plantasForrageiras";
 import { getProfile } from "@/database/user";
-import { createCanteiro } from "@/database/canteiros";
+import { createCanteiro, updateCanteiro } from "@/database/canteiros";
 import { extractApiError } from "@/lib/apiError";
 
 import HeaderStack from "@/components/navigation/headerStack";
@@ -64,13 +64,24 @@ const ANALYSIS_TYPES: AnalysisType[] = [
   },
 ];
 
+// Sem parâmetros cria um canteiro; com `id` edita o canteiro existente
 export default function NovaListaScreen() {
   const insets = useSafeAreaInsets();
-  const [selectedPlantId, setPlantId] = useState<string>("");
+  const params = useLocalSearchParams<{
+    id?: string;
+    name?: string;
+    plant_id?: string;
+    tem_formularios?: string;
+  }>();
+  const editing = !!params.id;
+  // Com formulários registrados, a planta não pode mais ser trocada
+  const plantaTravada = editing && params.tem_formularios === "1";
+
+  const [selectedPlantId, setPlantId] = useState<string>(params.plant_id ?? "");
   const [analysisTypeId, setAnalysisTypeId] = useState<string>(
     ANALYSIS_TYPES[0].id
   );
-  const [nomeCanteiro, setNomeCanteiro] = useState("");
+  const [nomeCanteiro, setNomeCanteiro] = useState<string>(params.name ?? "");
   const [saving, setSaving] = useState(false);
 
   const semesterFocus = ANALYSIS_TYPES.find(
@@ -82,8 +93,9 @@ export default function NovaListaScreen() {
     data: plantasData,
     isLoading: loadingPlantas,
     error: plantasError,
-  } = useSWR(["plantas", semesterFocus], () =>
-    getPlantas(undefined, semesterFocus)
+  } = useSWR(["plantas", editing ? "todas" : semesterFocus], () =>
+    // Ao editar, o catálogo vem inteiro para incluir a planta atual
+    getPlantas(undefined, editing ? undefined : semesterFocus)
   );
   const plantas: PlantOption[] = (
     Array.isArray(plantasData) ? plantasData : (plantasData?.data ?? [])
@@ -101,7 +113,7 @@ export default function NovaListaScreen() {
     ? selectedPlantId
     : (plantas[0]?.id ?? "");
 
-  async function handleCreate() {
+  async function handleSalvar() {
     if (!plantId) {
       Alert.alert("Selecione uma planta", "Escolha a planta do canteiro.");
       return;
@@ -114,25 +126,42 @@ export default function NovaListaScreen() {
     try {
       setSaving(true);
 
-      // Uma chamada só: o backend cria canteiro, vínculo com o usuário do
-      // token e lista de formulários numa transação
-      await createCanteiro({
-        plant_id: plantId,
-        name: nomeCanteiro.trim(),
-      });
+      if (editing) {
+        // Só envia o que mudou
+        const mudancas: { name?: string; plant_id?: string } = {};
+        if (nomeCanteiro.trim() !== (params.name ?? "")) mudancas.name = nomeCanteiro.trim();
+        if (!plantaTravada && plantId !== params.plant_id) mudancas.plant_id = plantId;
 
-      // Revalida canteiros (telas Canteiros e Novo relatório) e a home
-      await Promise.all([mutate("user-canteiros"), mutate("home")]);
+        if (Object.keys(mudancas).length > 0) {
+          await updateCanteiro(params.id as string, mudancas);
+        }
+      } else {
+        // Uma chamada só: o backend cria canteiro, vínculo com o usuário do
+        // token e lista de formulários numa transação
+        await createCanteiro({
+          plant_id: plantId,
+          name: nomeCanteiro.trim(),
+        });
+      }
 
-      Alert.alert("Pronto!", "Canteiro criado com sucesso.");
+      // Revalida canteiros, home e relatórios (que mostram nome e planta)
+      await Promise.all([
+        mutate("user-canteiros"),
+        mutate("home"),
+        mutate("relatorios"),
+      ]);
+
+      Alert.alert("Pronto!", editing ? "Canteiro atualizado." : "Canteiro criado com sucesso.");
       router.back();
     } catch (error) {
-      console.error("Erro ao criar canteiro:", error);
+      console.error("Erro ao salvar canteiro:", error);
       Alert.alert(
-        "Erro ao criar",
+        "Erro ao salvar",
         extractApiError(
           error,
-          "Não foi possível criar o canteiro agora."
+          editing
+            ? "Não foi possível atualizar o canteiro agora."
+            : "Não foi possível criar o canteiro agora."
         )
       );
     } finally {
@@ -147,12 +176,16 @@ export default function NovaListaScreen() {
         contentContainerClassName="pb-32"
         showsVerticalScrollIndicator={false}
       >
-        <HeaderStack title="Novo canteiro" />
+        <HeaderStack title={editing ? "Editar canteiro" : "Novo canteiro"} />
 
         {/* Escolha a planta */}
         <Text className="mb-3 text-lg font-bold text-slate-900">
           Escolha a planta
         </Text>
+
+        {plantaTravada ? (
+          <Warning text="A planta não pode ser trocada porque este canteiro já tem formulários. Você pode alterar o nome." />
+        ) : null}
 
         {loadingPlantas ? (
           <ActivityIndicator color="#065f46" className="mb-6" />
@@ -174,29 +207,35 @@ export default function NovaListaScreen() {
                 name={plant.name}
                 icon={plant.icon}
                 selected={plant.id === plantId}
-                onPress={() => setPlantId(plant.id)}
+                onPress={() => {
+                  if (!plantaTravada) setPlantId(plant.id);
+                }}
               />
             ))}
           </ScrollView>
         )}
 
-        {/* Tipo de análise */}
-        <Text className="mb-3 text-lg font-bold text-slate-900">
-          Tipo de análise
-        </Text>
+        {/* Tipo de análise (só ao criar: filtra as plantas por semestre) */}
+        {editing ? null : (
+          <>
+            <Text className="mb-3 text-lg font-bold text-slate-900">
+              Tipo de análise
+            </Text>
 
-        <View className="mb-6 flex-row gap-3">
-          {ANALYSIS_TYPES.map((type) => (
-            <AnalysisTypeCard
-              key={type.id}
-              title={type.title}
-              subtitle={type.subtitle}
-              icon={type.icon}
-              selected={type.id === analysisTypeId}
-              onPress={() => setAnalysisTypeId(type.id)}
-            />
-          ))}
-        </View>
+            <View className="mb-6 flex-row gap-3">
+              {ANALYSIS_TYPES.map((type) => (
+                <AnalysisTypeCard
+                  key={type.id}
+                  title={type.title}
+                  subtitle={type.subtitle}
+                  icon={type.icon}
+                  selected={type.id === analysisTypeId}
+                  onPress={() => setAnalysisTypeId(type.id)}
+                />
+              ))}
+            </View>
+          </>
+        )}
 
         {/* Configurações */}
         <View className="mb-6 rounded-2xl bg-white p-4 shadow-sm">
@@ -219,25 +258,29 @@ export default function NovaListaScreen() {
             />
           </LabeledField>
 
-          <LabeledField label="Período letivo">
-            <TextInput
-              value={periodoLetivo}
-              editable={false}
-              placeholder="Opcional — defina no perfil"
-              placeholderTextColor="#94a3b8"
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
-            />
-          </LabeledField>
+          {editing ? null : (
+            <>
+              <LabeledField label="Período letivo">
+                <TextInput
+                  value={periodoLetivo}
+                  editable={false}
+                  placeholder="Opcional — defina no perfil"
+                  placeholderTextColor="#94a3b8"
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
+                />
+              </LabeledField>
 
-          <LabeledField label="Turma">
-            <TextInput
-              value={turma}
-              editable={false}
-              placeholder="Opcional — defina no perfil"
-              placeholderTextColor="#94a3b8"
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
-            />
-          </LabeledField>
+              <LabeledField label="Turma">
+                <TextInput
+                  value={turma}
+                  editable={false}
+                  placeholder="Opcional — defina no perfil"
+                  placeholderTextColor="#94a3b8"
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
+                />
+              </LabeledField>
+            </>
+          )}
         </View>
 
         <Warning text="Use EPIs adequados. Leve protetor solar e água." />
@@ -249,7 +292,7 @@ export default function NovaListaScreen() {
         style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
       >
         <Pressable
-          onPress={handleCreate}
+          onPress={handleSalvar}
           disabled={saving}
           className="h-14 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
         >
@@ -257,7 +300,7 @@ export default function NovaListaScreen() {
             <ActivityIndicator color="#ffffff" />
           ) : (
             <Text className="text-base font-bold text-white">
-              Criar canteiro
+              {editing ? "Salvar alterações" : "Criar canteiro"}
             </Text>
           )}
         </Pressable>

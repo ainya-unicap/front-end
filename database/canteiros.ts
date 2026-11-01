@@ -64,3 +64,18 @@ export async function deleteCanteiro(canteiroId: string) {
         throw error;
     }
 }
+
+// Altera o nome e/ou a planta. A planta só pode ser trocada enquanto o canteiro
+// não tiver formulários (o backend recusa com CANTEIRO_COM_FORMULARIOS).
+export async function updateCanteiro(
+    canteiroId: string,
+    data: { name?: string; plant_id?: string }
+) {
+    try {
+        const response = await api.put(`canteiros/${canteiroId}`, data);
+        return response.data;
+    } catch (error) {
+        console.error('Error updating canteiro:', error);
+        throw error;
+    }
+}

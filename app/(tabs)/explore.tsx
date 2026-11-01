@@ -17,6 +17,7 @@ type CanteiroItem = {
   icon: AppIconName;
   name: string;
   description: string;
+  plantId: string;
   totalRegistros: number;
   lastRecord: string;
   status: "ATIVO" | "PAUSADO";
@@ -65,6 +66,7 @@ const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
     icon: getPlantCategoryIcon(canteiro.plant?.category),
     name: canteiro.name || canteiro.plant?.name || 'Canteiro',
     description: canteiro.plant?.name || 'Planta',
+    plantId: String(canteiro.plant?.id ?? canteiro.plant_id ?? ''),
     totalRegistros,
     lastRecord,
     status,
@@ -82,7 +84,33 @@ export default function CanteirosScreen() {
   const lista = Array.isArray(canteiros) ? canteiros : (canteiros?.data ?? []);
   const mappedCanteiros: CanteiroItem[] = lista.map(mapCanteiroToCanteiro);
 
-  // Segurar o card pede confirmação e exclui o canteiro
+  // Segurar o card abre as ações do canteiro
+  function handleAcoes(canteiro: CanteiroItem) {
+    Alert.alert(canteiro.name, "O que você quer fazer com este canteiro?", [
+      {
+        text: "Editar",
+        onPress: () =>
+          router.push({
+            pathname: "/nova-lista",
+            params: {
+              id: canteiro.id,
+              name: canteiro.name,
+              plant_id: canteiro.plantId,
+              // A planta só pode ser trocada enquanto não houver formulários
+              tem_formularios: canteiro.totalRegistros > 0 ? "1" : "0",
+            },
+          }),
+      },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: () => handleExcluir(canteiro),
+      },
+      { text: "Cancelar", style: "cancel" },
+    ]);
+  }
+
+  // Pede confirmação e exclui o canteiro
   function handleExcluir(canteiro: CanteiroItem) {
     Alert.alert(
       `Excluir "${canteiro.name}"?`,
@@ -155,7 +183,7 @@ export default function CanteirosScreen() {
               lastRecord={canteiro.lastRecord}
               status={canteiro.status}
               progress={canteiro.progress}
-              onLongPress={() => handleExcluir(canteiro)}
+              onLongPress={() => handleAcoes(canteiro)}
               onPress={() =>
                 router.push({
                   pathname: "/canteiros/[id]",
