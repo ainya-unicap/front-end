@@ -45,7 +45,22 @@
       "expo-image",
       "expo-status-bar",
       "expo-web-browser",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "O app usa a câmera para fotografar as plantas nos formulários.",
+          "photosPermission": "O app acessa suas fotos para anexar imagens das plantas aos formulários."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "O app salva na sua galeria as fotos que você tira das plantas.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": ["photo"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -150,6 +150,11 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
       return;
     }
 
+    if (!clima) {
+      Alert.alert("Condições do tempo", "Selecione sol, nublado ou chuva para salvar o formulário.");
+      return;
+    }
+
     if (photos.length > MAX_REGISTRO_PHOTOS) {
       Alert.alert(
         "Muitas fotos",
@@ -221,6 +226,11 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
 
   // Edição: atualiza os campos do registro (as fotos já enviadas são mantidas)
   async function handleSaveEdicao() {
+    if (!clima) {
+      Alert.alert("Condições do tempo", "Selecione sol, nublado ou chuva para salvar o formulário.");
+      return;
+    }
+
     const dataISO = dataParaISOString(date);
     if (!dataISO) {
       Alert.alert("Data inválida", "Informe uma data válida no formato dd/mm/aaaa.");
@@ -306,7 +316,7 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
             <FieldBox label="Data" value={date} onChangeText={setDate} />
             <FieldBox label="Semana (opcional)" value={week} onChangeText={setWeek} />
           </View>
-          <Text className="mb-2 text-sm font-bold uppercase text-slate-600">Condições do Tempo</Text>
+          <Text className="mb-2 text-sm font-bold uppercase text-slate-600">Condições do Tempo (obrigatório)</Text>
           <View className="flex-row justify-between gap-2">
             {[
               { label: "Sol", icon: "sun" as const, value: "SOL" as const },

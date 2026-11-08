@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import * as MediaLibrary from "expo-media-library/legacy";
 import { Alert, Image, Pressable, Text, View } from "react-native";
 import { AppIcon } from "@/components/ui/AppIcon";
 
@@ -16,6 +17,28 @@ type PhotoUploadBoxProps = {
   photos: SelectedPhoto[];
   onPhotosChange: (photos: SelectedPhoto[]) => void;
 };
+
+// Pede permissão só para ADICIONAR fotos à galeria (não lê as do usuário).
+// Se negar, a foto continua anexada ao formulário normalmente.
+async function podeSalvarNaGaleria() {
+  try {
+    const permissao = await MediaLibrary.requestPermissionsAsync(true);
+    return permissao.granted;
+  } catch {
+    return false;
+  }
+}
+
+// Guarda uma cópia das fotos tiradas pela câmera na galeria do aparelho
+async function salvarNaGaleria(uris: string[]) {
+  for (const uri of uris) {
+    try {
+      await MediaLibrary.saveToLibraryAsync(uri);
+    } catch {
+      // Falha ao copiar para a galeria não impede o envio do formulário
+    }
+  }
+}
 
 async function pickPhoto(
   mode: "camera" | "library",
@@ -41,6 +64,9 @@ async function pickPhoto(
     );
     return;
   }
+
+  // Fotos tiradas no app também ficam salvas na galeria do usuário
+  const salvarCopia = mode === "camera" ? await podeSalvarNaGaleria() : false;
 
   const result =
     mode === "camera"
@@ -96,6 +122,10 @@ async function pickPhoto(
 
   if (selectedPhotos.length > 0) {
     onPhotosSelected(selectedPhotos);
+
+    if (salvarCopia) {
+      void salvarNaGaleria(selectedPhotos.map((photo) => photo.uri));
+    }
   }
 
   const rejectedCount = unavailableCount + unsupportedCount + oversizedCount;
