@@ -40,17 +40,20 @@ export default function MinhasTurmasScreen() {
         </Text>
 
         {isLoading ? (
-          <View className="gap-3">
+          <View key="carregando" className="gap-3">
             {[0, 1].map((i) => (
               <Skeleton key={i} width="100%" height={84} radius={16} />
             ))}
           </View>
         ) : error ? (
-          <Text className="py-10 text-center text-red-600">
+          <Text key="erro" className="py-10 text-center text-red-600">
             Não foi possível carregar suas turmas.
           </Text>
         ) : lista.length === 0 ? (
-          <View className="items-center rounded-2xl bg-white px-6 py-10 shadow-sm">
+          <View
+            key="vazio"
+            className="items-center rounded-2xl bg-white px-6 py-10 shadow-sm"
+          >
             <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
               <AppIcon name="users" size={28} color="#166534" />
             </View>
