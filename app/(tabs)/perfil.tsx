@@ -153,14 +153,14 @@ export default function PerfilScreen() {
               iconBg="bg-orange-100"
               label="Período letivo"
               value={perfil?.academic_period?.name ?? "Sem período vinculado"}
-              onPress={() => router.push("/editar-perfil/turma" as any)}
+              onPress={() => router.push("/turmas" as any)}
             />
             <ProfileRow
               icon="users"
               iconBg="bg-violet-100"
-              label="Turma"
-              value={perfil?.turma?.name ?? "Sem turma vinculada"}
-              onPress={() => router.push("/editar-perfil/turma" as any)}
+              label="Minhas turmas"
+              value={perfil?.turma?.name ?? "Entre com o código da professora"}
+              onPress={() => router.push("/turmas" as any)}
               isLast
             />
           </ProfileSection>

@@ -8,17 +8,15 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { TextField } from "@/components/ui/TextField";
 import { getInstitutions } from "@/database/institutions";
-import { getTurmas } from "@/database/turmas";
-import { getProfile, updateProfile, updateTurma } from "@/database/user";
+import { getProfile, updateProfile } from "@/database/user";
 import { extractApiError } from "@/lib/apiError";
 
-type Campo = "nome" | "senha" | "instituicao" | "turma";
+type Campo = "nome" | "senha" | "instituicao";
 
 const TITULOS: Record<Campo, string> = {
   nome: "Editar nome",
   senha: "Alterar senha",
   instituicao: "Editar instituição",
-  turma: "Editar turma",
 };
 
 const MIN_PASSWORD_LENGTH = 6;
@@ -75,7 +73,7 @@ export default function EditarPerfilScreen() {
   const { data: perfilResp } = useSWR("perfil", () => getProfile());
   const perfil = (perfilResp as any)?.data ?? perfilResp;
 
-  if (campo !== "nome" && campo !== "senha" && campo !== "instituicao" && campo !== "turma") {
+  if (campo !== "nome" && campo !== "senha" && campo !== "instituicao") {
     return (
       <View className="flex-1 bg-slate-50 px-5">
         <HeaderStack title="Editar perfil" />
@@ -105,41 +103,24 @@ function EditarCampoForm({ campo, perfil }: { campo: Campo; perfil: any }) {
     campo === "instituicao" ? "/institutions" : null,
     getInstitutions
   );
-  const { data: turmas, isLoading: loadingTurmas } = useSWR(
-    campo === "turma" ? "/turmas" : null,
-    getTurmas
-  );
 
   const [nome, setNome] = useState<string>(perfil.name ?? "");
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
   const [selecionado, setSelecionado] = useState<string | null>(
-    campo === "instituicao"
-      ? perfil.institution?.id ?? null
-      : campo === "turma"
-      ? perfil.turma?.id ?? null
-      : null
+    campo === "instituicao" ? perfil.institution?.id ?? null : null
   );
   const [erro, setErro] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const instituicaoItems: Option[] = useMemo(
     () =>
-      (instituicoes ?? []).map((i: { id: string; name: string }) => ({
+      (instituicoes ?? []).map((i: { id: string; name: string; abbreviation?: string }) => ({
         value: i.id,
-        label: i.name,
+        label: i.abbreviation ? `${i.abbreviation} — ${i.name}` : i.name,
       })),
     [instituicoes]
-  );
-  const turmaItems: Option[] = useMemo(
-    () =>
-      (turmas ?? []).map((t: { id: string; name: string; period?: { name: string } }) => ({
-        value: t.id,
-        label: t.name,
-        hint: t.period?.name,
-      })),
-    [turmas]
   );
 
   async function salvar(action: () => Promise<unknown>, sucesso: string) {
@@ -175,35 +156,24 @@ function EditarCampoForm({ campo, perfil }: { campo: Campo; perfil: any }) {
       );
     }
 
-    if (campo === "instituicao") {
-      if (!selecionado) return setErro("Selecione uma instituição.");
-      return salvar(() => updateProfile({ institution_id: selecionado }), "Instituição atualizada.");
-    }
-
-    if (!selecionado) return setErro("Selecione uma turma.");
-    return salvar(() => updateTurma(selecionado), "Turma atualizada.");
+    if (!selecionado) return setErro("Selecione uma instituição.");
+    return salvar(() => updateProfile({ institution_id: selecionado }), "Instituição atualizada.");
   }
 
   function handleRemoverVinculo() {
-    const alvo = campo === "turma" ? "a turma" : "a instituição";
-    Alert.alert("Remover vínculo", `Deseja desvincular ${alvo}?`, [
+    Alert.alert("Remover vínculo", "Deseja desvincular a instituição?", [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Remover",
         style: "destructive",
         onPress: () =>
-          campo === "turma"
-            ? salvar(() => updateTurma(null), "Turma desvinculada.")
-            : salvar(() => updateProfile({ institution_id: null }), "Instituição desvinculada."),
+          salvar(() => updateProfile({ institution_id: null }), "Instituição desvinculada."),
       },
     ]);
   }
 
-  const carregando =
-    (campo === "instituicao" && loadingInstituicoes) ||
-    (campo === "turma" && loadingTurmas);
-  const temVinculoAtual =
-    (campo === "turma" && !!perfil?.turma) || (campo === "instituicao" && !!perfil?.institution);
+  const carregando = campo === "instituicao" && loadingInstituicoes;
+  const temVinculoAtual = campo === "instituicao" && !!perfil?.institution;
 
   return (
     <View className="flex-1 bg-slate-50">
@@ -266,20 +236,6 @@ function EditarCampoForm({ campo, perfil }: { campo: Campo; perfil: any }) {
                 onChange={setSelecionado}
                 emptyText="Nenhuma instituição disponível."
               />
-            ) : null}
-
-            {campo === "turma" ? (
-              <>
-                <Text className="mb-3 text-sm text-slate-400">
-                  O período letivo é definido pela turma escolhida.
-                </Text>
-                <OptionList
-                  items={turmaItems}
-                  value={selecionado}
-                  onChange={setSelecionado}
-                  emptyText="Nenhuma turma disponível."
-                />
-              </>
             ) : null}
 
             {erro ? (

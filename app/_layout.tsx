@@ -49,6 +49,8 @@ export default function RootLayout() {
             <Stack.Screen name="relatorios/[id]/pdf" options={{ headerShown: false }} />
             <Stack.Screen name="editar-perfil/[campo]" options={{ headerShown: false }} />
             <Stack.Screen name="sobre" options={{ headerShown: false }} />
+            <Stack.Screen name="turmas/index" options={{ headerShown: false }} />
+            <Stack.Screen name="turmas/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="recuperar-senha/index" options={{ headerShown: false }} />
             <Stack.Screen name="recuperar-senha/codigo" options={{ headerShown: false }} />
             <Stack.Screen name="recuperar-senha/nova-senha" options={{ headerShown: false }} />

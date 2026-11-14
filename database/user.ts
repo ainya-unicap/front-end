@@ -49,14 +49,3 @@ export async function updateProfile(data: {
     const response = await api.put(`users/${userId}/profile`, data);
     return response.data;
 }
-
-// turmaId null desvincula o aluno; o período letivo é sempre o da turma.
-export async function updateTurma(turmaId: string | null) {
-    const userId = getUserId();
-    if (!userId) {
-        throw new Error('Usuário não autenticado para atualizar a turma.');
-    }
-
-    const response = await api.put(`users/${userId}/turma`, { turma_id: turmaId });
-    return response.data;
-}
