@@ -214,9 +214,9 @@ export default function NovoRelatorioScreen() {
             />
 
             <AnalysisTypeCard
-              icon="chart"
-              title="Com análise"
-              subtitle="+ gráficos e análises"
+              icon="sparkle"
+              title="Com IA"
+              subtitle="Resumo inteligente"
               selected={reportType === "analise"}
               onPress={() => setReportType("analise")}
             />
