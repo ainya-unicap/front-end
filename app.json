@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "front-end",
+    "name": "Forrageia",
     "slug": "front-end",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,7 +14,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B4A2F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
