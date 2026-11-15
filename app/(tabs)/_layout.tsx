@@ -54,7 +54,7 @@ export default function TabLayout() {
         options={{
           title: 'Relatórios',
           tabBarIcon: ({ focused }) => (
-            <Ionicons name="document-text" size={24} color={focused ? '#166534' : '#d8b4fe'} />
+            <Ionicons name="document-text" size={24} color={focused ? '#166534' : '#9ca3af'} />
           ),
         }}
       />
