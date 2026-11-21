@@ -1,3 +1,4 @@
+import { mutate } from "swr";
 import { api } from "./index";
 import { extractApiError } from "@/lib/apiError";
 import { parsePerfil, PerfilAcademico } from "@/lib/perfil";
@@ -69,7 +70,7 @@ export async function cadastro({
             name,
             matricula,
             email,
-            instituicao,
+            institutionId: instituicao,
             password: senha,
         });
 
@@ -126,22 +127,28 @@ export async function login({ matricula, senha, recaptchaToken }: LoginInput): P
 }
 
 export async function logout() {
+    let status = 200;
+    let data: unknown = null;
+
+    // O aviso ao servidor é best-effort: o logout local acontece de qualquer jeito
     try {
         const response = await api.post('users/logout', { refreshToken: getRefreshToken() });
-        deleteAccessToken();
-        deleteRefreshToken();
-        deleteUserRole();
-        return {
-            status: response.status,
-            data: response.data
-        }
+        status = response.status;
+        data = response.data;
     } catch (error: any) {
         console.error('Error during logout:', error);
-        return {
-            status: error.response?.status || 500,
-            data: "Ocorreu um erro ao realizar o logout."
-        }
+        status = error.response?.status || 500;
+        data = "Ocorreu um erro ao realizar o logout.";
+    } finally {
+        deleteAccessToken();
+        deleteRefreshToken();
+        deleteUserId();
+        deleteUserRole();
+        // Descarta o cache de dados para a próxima conta não ver os da anterior
+        mutate(() => true, undefined, { revalidate: false });
     }
+
+    return { status, data };
 }
 
 export function saveUserRole(role: PerfilAcademico) {

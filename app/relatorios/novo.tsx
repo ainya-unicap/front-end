@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
   Alert,
@@ -8,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { isAxiosError } from "axios";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import useSWR, { mutate } from "swr";
 
 import { getCanteirosByUser } from "@/database/canteiros";
@@ -22,11 +23,12 @@ import { SectionCard } from "@/components/registro/SectionCard";
 import { AnalysisTypeCard } from "@/components/nova-lista/AnalysisTypeCard";
 import { Stepper } from "@/components/relatorios/Stepper";
 import { CanteiroSelectCard } from "@/components/relatorios/CanteiroSelectCard";
+import { AppIcon, getPlantCategoryIcon, type AppIconName } from "@/components/ui/AppIcon";
 
 type CanteiroOption = {
   id: string;
   listId: string | null;
-  icon: string;
+  icon: AppIconName;
   name: string;
   totalForms: number;
   location: string;
@@ -34,21 +36,10 @@ type CanteiroOption = {
   extraCount: number;
 };
 
-// Emoji por categoria de planta forrageira
-const CATEGORY_ICON: Record<string, string> = {
-  CACTACEA: "🌵",
-  CULTURA_ANUAL: "🌾",
-  GRAMINEA_PORTE_ALTO: "🌱",
-  GRAMINEA_PORTE_BAIXO: "🍀",
-  GRAMINEA_PORTE_MEDIO: "🌿",
-  LEGUMINOSA_ARBUSTIVA: "🌳",
-  LEGUMINOSA_HERBACEA: "🍃",
-  OLEAGINOSA_FORRAGEIRA: "🌻",
-};
-
 function mapCanteiro(canteiro: any): CanteiroOption {
   const listas: any[] = canteiro.listaDeFormularios ?? [];
-  const lista = listas[0];
+  // O relatório simples usa a lista que tem registros (senão, a primeira)
+  const lista = listas.find((item) => (item._count?.formularios ?? 0) > 0) ?? listas[0];
   // Soma os formulários de todas as listas do canteiro
   const totalForms = listas.reduce(
     (sum, item) => sum + (item._count?.formularios ?? 0),
@@ -57,7 +48,7 @@ function mapCanteiro(canteiro: any): CanteiroOption {
   return {
     id: String(canteiro.id),
     listId: lista?.id ? String(lista.id) : null,
-    icon: CATEGORY_ICON[canteiro.plant?.category] ?? "🌱",
+    icon: getPlantCategoryIcon(canteiro.plant?.category),
     name: canteiro.plant?.name ?? canteiro.name ?? "Canteiro",
     totalForms,
     location: canteiro.name ?? "",
@@ -69,6 +60,7 @@ function mapCanteiro(canteiro: any): CanteiroOption {
 type ReportType = "simples" | "analise";
 
 export default function NovoRelatorioScreen() {
+  const insets = useSafeAreaInsets();
   const { data: canteirosData, isLoading } = useSWR("user-canteiros", () =>
     getCanteirosByUser()
   );
@@ -80,16 +72,16 @@ export default function NovoRelatorioScreen() {
     return arr.map(mapCanteiro);
   }, [canteirosData]);
 
-  const [canteiroId, setCanteiroId] = useState("");
+  // Canteiro já escolhido no popup da Home, se houver
+  const { canteiro_id } = useLocalSearchParams<{ canteiro_id?: string }>();
+  const [selectedCanteiroId, setCanteiroId] = useState(canteiro_id ?? "");
   const [reportType, setReportType] = useState<ReportType>("analise");
   const [generating, setGenerating] = useState(false);
 
-  // Seleciona o primeiro canteiro quando a lista carrega
-  useEffect(() => {
-    if (!canteiroId && canteiros.length > 0) {
-      setCanteiroId(canteiros[0].id);
-    }
-  }, [canteiros, canteiroId]);
+  // Sem escolha válida, vale o primeiro canteiro da lista
+  const canteiroId = canteiros.some((item) => item.id === selectedCanteiroId)
+    ? selectedCanteiroId
+    : (canteiros[0]?.id ?? "");
 
   const canteiro = useMemo(
     () => canteiros.find((item) => item.id === canteiroId),
@@ -140,7 +132,10 @@ export default function NovoRelatorioScreen() {
         return;
       }
 
-      const relatorio = await generateRelatorio({ list_id: canteiro.listId });
+      const relatorio = await generateRelatorio({
+        list_id: canteiro.listId,
+        tipo: "simples",
+      });
       await mutate("relatorios");
       const relatorioId =
         relatorio?.id ?? relatorio?.data?.id ?? relatorio?.relatorio?.id;
@@ -181,10 +176,9 @@ export default function NovoRelatorioScreen() {
           <Stepper steps={["Canteiro", "Gerar"]} current={0} />
         </View>
 
-        <SectionCard title="Escolha o canteiro" icon="🌱">
+        <SectionCard title="Escolha o canteiro" icon="plant">
           <Text className="mb-4 text-sm leading-5 text-slate-400">
-            A lista de formulários do canteiro será usada como base para a IA
-            gerar o relatório automaticamente.
+            Os registros do canteiro escolhido são a base do relatório.
           </Text>
 
           {isLoading ? (
@@ -209,20 +203,20 @@ export default function NovoRelatorioScreen() {
           )}
         </SectionCard>
 
-        <SectionCard title="Tipo de relatório" icon="📄">
+        <SectionCard title="Tipo de relatório" icon="file">
           <View className="flex-row gap-3">
             <AnalysisTypeCard
-              icon="📋"
+              icon="clipboard"
               title="Relatório simples"
-              subtitle="Seções obrigatórias"
+              subtitle="Todos os registros"
               selected={reportType === "simples"}
-              disabled
+              onPress={() => setReportType("simples")}
             />
 
             <AnalysisTypeCard
-              icon="📊"
-              title="Com análise"
-              subtitle="+ gráficos e análises"
+              icon="sparkle"
+              title="Com IA"
+              subtitle="Resumo inteligente"
               selected={reportType === "analise"}
               onPress={() => setReportType("analise")}
             />
@@ -230,21 +224,40 @@ export default function NovoRelatorioScreen() {
         </SectionCard>
 
         <View className="flex-row rounded-2xl bg-emerald-50 p-4">
-          <Text className="mr-2 text-base">✨</Text>
+          <View className="mr-2">
+            <AppIcon name="sparkle" size={18} color="#065f46" />
+          </View>
           <Text className="flex-1 text-sm leading-5 text-slate-600">
-            <Text className="font-bold text-emerald-900">
-              A IA vai gerar o relatório{"\n"}
-            </Text>
-            Com base nos {canteiro?.totalForms ?? 0} formulários do{" "}
-            {canteiro?.name ?? "canteiro"}, a IA vai preencher automaticamente a
-            Introdução, Objetivo, Desenvolvimento e Considerações finais. Você
-            poderá editar tudo antes de submeter.
+            {reportType === "simples" ? (
+              <>
+                <Text className="font-bold text-emerald-900">
+                  Todos os registros, organizados{"\n"}
+                </Text>
+                Os {canteiro?.totalForms ?? 0} formulários do{" "}
+                {canteiro?.name ?? "canteiro"} serão reunidos em ordem
+                cronológica, semana a semana, com clima, fase, altura, manejo,
+                fotos e observações de cada registro.
+              </>
+            ) : (
+              <>
+                <Text className="font-bold text-emerald-900">
+                  A IA vai gerar o relatório{"\n"}
+                </Text>
+                Com base nos {canteiro?.totalForms ?? 0} formulários do{" "}
+                {canteiro?.name ?? "canteiro"}, a IA vai preencher
+                automaticamente a Introdução, o Objetivo, o Desenvolvimento e as
+                Considerações finais.
+              </>
+            )}
           </Text>
         </View>
       </ScrollView>
 
       {/* Footer fixo com a ação principal */}
-      <View className="absolute bottom-0 left-0 right-0 border-t border-slate-100 bg-slate-50 px-5 pb-8 pt-3">
+      <View
+        className="absolute bottom-0 left-0 right-0 border-t border-slate-100 bg-slate-50 px-5 pt-3"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+      >
         <Pressable
           onPress={handleGerar}
           disabled={generating}

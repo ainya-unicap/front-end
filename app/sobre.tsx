@@ -4,6 +4,7 @@ import Constants from "expo-constants";
 import HeaderStack from "@/components/navigation/headerStack";
 import { ProfileSection } from "@/components/perfil/ProfileSection";
 import { ProfileRow } from "@/components/perfil/ProfileRow";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 export default function SobreScreen() {
   const version = Constants.expoConfig?.version ?? "1.0.0";
@@ -20,7 +21,7 @@ export default function SobreScreen() {
         {/* Identidade do app */}
         <View className="mb-8 items-center">
           <View className="mb-4 h-24 w-24 items-center justify-center rounded-3xl bg-emerald-900">
-            <Text className="text-5xl">🌱</Text>
+            <AppIcon name="plant" size={44} color="#ffffff" />
           </View>
           <Text className="text-2xl font-bold text-emerald-900">Forrage App</Text>
           <Text className="mt-1 text-center text-sm text-slate-400">
@@ -46,19 +47,19 @@ export default function SobreScreen() {
         {/* Informações */}
         <ProfileSection title="Informações">
           <ProfileRow
-            icon="📦"
+            icon="package"
             iconBg="bg-emerald-100"
             label="Versão"
             value={version}
           />
           <ProfileRow
-            icon="🎓"
+            icon="graduation"
             iconBg="bg-violet-100"
             label="Projeto acadêmico"
             value="Unicap — PI 4"
           />
           <ProfileRow
-            icon="🌿"
+            icon="leaf"
             iconBg="bg-amber-100"
             label="Categoria"
             value="Educação / Agronomia"

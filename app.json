@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "front-end",
+    "name": "Forrageia",
     "slug": "front-end",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,7 +14,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0B4A2F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -45,7 +45,22 @@
       "expo-image",
       "expo-status-bar",
       "expo-web-browser",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "O app usa a câmera para fotografar as plantas nos formulários.",
+          "photosPermission": "O app acessa suas fotos para anexar imagens das plantas aos formulários."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "O app salva na sua galeria as fotos que você tira das plantas.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": ["photo"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,32 +1,24 @@
-import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { AntDesign } from "@expo/vector-icons";
 import useSWR from "swr";
 
-import { getCanteiroListas } from "@/database/canteiros";
-import { getListaFormularios } from "@/database/listasFormularios";
+import { getCanteiroFormularios } from "@/database/canteiros";
 
 import { StatusBadge } from "@/components/canteiros/StatusBadge";
-import { FilterChips } from "@/components/canteiros/FilterChips";
 import { FormularioCard } from "@/components/canteiros/FormularioCard";
 
 type FormularioItem = {
   id: string;
   week: number;
-  status: "COMPLETO" | "RASCUNHO" | "PENDENTE";
+  complete: boolean;
   dateLabel: string;
   photos: number;
-  checklistDone: number;
-  checklistTotal: number;
-  progress: number;
 };
 
 function formatDateLabel(formulario: any): string {
-  const raw =
-    formulario.data_preenchimento ??
-    formulario.createdAt ??
-    formulario.started_at;
+  const raw = formulario.date ?? formulario.createdAt;
   if (!raw) return "";
   const d = new Date(raw);
   if (Number.isNaN(d.getTime())) return "";
@@ -38,80 +30,41 @@ function formatDateLabel(formulario: any): string {
 }
 
 function mapFormulario(formulario: any): FormularioItem {
-  const checklists = formulario.checklists ?? [];
-  const checklistTotal = checklists.length ?? 0;
-  const checklistDone = checklists.filter((c: any) => c.checked).length ?? 0;
-  const photos = formulario.photos?.length ?? formulario._count?.photos ?? 0;
-
-  const status: FormularioItem["status"] =
-    (formulario.status as FormularioItem["status"]) ??
-    (formulario.synced ? "COMPLETO" : "RASCUNHO");
-
-  const progress =
-    checklistTotal > 0
-      ? Math.round((checklistDone / checklistTotal) * 100)
-      : status === "COMPLETO"
-        ? 100
-        : 0;
-
   return {
     id: String(formulario.id),
-    week: formulario.semana ?? formulario.week ?? 0,
-    status,
+    week: formulario.week ?? 0,
+    // synced = true quando o registro terminou de ser salvo (dados e fotos)
+    complete: formulario.synced === true,
     dateLabel: formatDateLabel(formulario),
-    photos,
-    checklistDone,
-    checklistTotal,
-    progress,
+    photos: formulario.photos?.length ?? 0,
   };
 }
 
-// Busca a primeira lista do canteiro e seus formulários
+// GET /canteiros/:id/formularios devolve as listas do canteiro, cada uma com
+// seus registros e fotos. A lista mais recente é a que recebe novos registros.
 async function fetchFormularios(canteiroId: string) {
-  const listasResp = await getCanteiroListas(canteiroId);
-  const listas = Array.isArray(listasResp)
-    ? listasResp
-    : (listasResp?.data ?? []);
-  const lista = listas[0];
-  if (!lista?.id) {
-    return { listId: null as string | null, items: [] as FormularioItem[] };
-  }
-  const formulariosResp = await getListaFormularios(lista.id);
-  const formularios = Array.isArray(formulariosResp)
-    ? formulariosResp
-    : (formulariosResp?.data ?? []);
+  const resp = await getCanteiroFormularios(canteiroId);
+  const listas: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
+
   return {
-    listId: String(lista.id),
-    items: formularios.map(mapFormulario),
+    listId: listas[0]?.id ? String(listas[0].id) : null,
+    items: listas
+      .flatMap((lista) => lista.formularios ?? [])
+      .map(mapFormulario),
   };
 }
-
-const FILTERS = ["Todos", "Completos", "Rascunhos", "Pendentes"];
-
-const FILTER_STATUS: Record<string, FormularioItem["status"]> = {
-  Completos: "COMPLETO",
-  Rascunhos: "RASCUNHO",
-  Pendentes: "PENDENTE",
-};
 
 export default function ListaFormulariosScreen() {
+  const insets = useSafeAreaInsets();
   const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
   const canteiroName = name || "Canteiro";
-
-  const [filter, setFilter] = useState("Todos");
 
   const { data, isLoading } = useSWR(id ? `canteiro-forms-${id}` : null, () =>
     fetchFormularios(id)
   );
 
-  const todos: FormularioItem[] = data?.items ?? [];
+  const formularios: FormularioItem[] = data?.items ?? [];
   const listId: string | null = data?.listId ?? null;
-
-  const formularios = useMemo(() => {
-    const status = FILTER_STATUS[filter];
-    if (!status) return todos;
-    return todos.filter((item) => item.status === status);
-  }, [filter, todos]);
 
   function handleNovoRegistro() {
     // Abre a tela de criação de registro já com o list_id da lista do canteiro.
@@ -121,7 +74,10 @@ export default function ListaFormulariosScreen() {
   return (
     <View className="flex-1 bg-slate-50">
       {/* Cabeçalho */}
-      <View className="flex-row items-center justify-between px-5 pb-4 pt-14">
+      <View
+        className="flex-row items-center justify-between px-5 pb-4"
+        style={{ paddingTop: insets.top + 12 }}
+      >
         <View className="flex-1 flex-row items-center">
           <Pressable
             onPress={() => router.back()}
@@ -138,11 +94,7 @@ export default function ListaFormulariosScreen() {
           </Text>
         </View>
 
-        <StatusBadge label={`${todos.length} REG.`} variant="green" />
-      </View>
-
-      <View className="px-5">
-        <FilterChips options={FILTERS} value={filter} onChange={setFilter} />
+        <StatusBadge label={`${formularios.length} REG.`} variant="green" />
       </View>
 
       <ScrollView
@@ -154,19 +106,16 @@ export default function ListaFormulariosScreen() {
           <ActivityIndicator color="#065f46" className="mt-10" />
         ) : formularios.length === 0 ? (
           <Text className="mt-10 text-center text-sm text-slate-400">
-            Nenhum registro nesta categoria.
+            Nenhum registro neste canteiro ainda.
           </Text>
         ) : (
           formularios.map((item) => (
             <FormularioCard
               key={item.id}
               week={item.week}
-              status={item.status}
+              complete={item.complete}
               dateLabel={item.dateLabel}
               photos={item.photos}
-              checklistDone={item.checklistDone}
-              checklistTotal={item.checklistTotal}
-              progress={item.progress}
               onPress={() => router.push(`/registro-salvo/${item.id}`)}
             />
           ))
@@ -174,7 +123,10 @@ export default function ListaFormulariosScreen() {
       </ScrollView>
 
       {/* Botão flutuante: novo registro semanal */}
-      <View className="absolute bottom-8 left-0 right-0 items-center">
+      <View
+        className="absolute left-0 right-0 items-center"
+        style={{ bottom: insets.bottom + 16 }}
+      >
         <Pressable
           onPress={handleNovoRegistro}
           className="h-16 w-16 items-center justify-center rounded-full bg-emerald-800 shadow-lg active:opacity-80"

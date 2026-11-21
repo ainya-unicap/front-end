@@ -1,4 +1,5 @@
 import { Building2, ChevronDown } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
 import { Text, View, Pressable, ScrollView, Modal } from "react-native";
 
@@ -22,6 +23,7 @@ export function InstitutionSelect({
   loading = false,
   error,
 }: InstitutionSelectProps) {
+  const insets = useSafeAreaInsets();
   const [modalVisible, setModalVisible] = useState(false);
 
   // Encontra o nome da instituição que está selecionada
@@ -82,7 +84,10 @@ export function InstitutionSelect({
           className="flex-1 justify-end bg-black/40" 
           onPress={() => setModalVisible(false)}
         >
-          <View className="max-h-[70%] rounded-t-3xl bg-white p-6 shadow-xl">
+          <View
+            className="max-h-[70%] rounded-t-3xl bg-white px-6 pt-6 shadow-xl"
+            style={{ paddingBottom: insets.bottom + 24 }}
+          >
             <View className="mb-4 flex-row items-center justify-between">
               <Text className="text-xl font-bold text-slate-900">
                 Selecione sua instituição

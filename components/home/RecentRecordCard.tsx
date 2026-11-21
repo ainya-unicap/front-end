@@ -33,7 +33,7 @@ export function RecentRecordCard({ item }: RecentRecordCardProps) {
   
   // synced = true quando o registro terminou de ser salvo (dados e fotos);
   // false é um registro que ficou incompleto no meio do envio
-  const status = item.synced ? "Registro completo" : "Registro incompleto";
+  const status = item.synced ? "Formulário completo" : "Formulário incompleto";
 
   return (
     <Pressable

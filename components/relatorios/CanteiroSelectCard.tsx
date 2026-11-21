@@ -1,7 +1,8 @@
 import { Pressable, Text, View } from "react-native";
+import { AppIcon, type AppIconName } from "@/components/ui/AppIcon";
 
 type CanteiroSelectCardProps = {
-  icon: string;
+  icon: AppIconName;
   name: string;
   subtitle: string;
   selected?: boolean;
@@ -28,7 +29,7 @@ export function CanteiroSelectCard({
     >
       <View className="flex-row items-center">
         <View className="mr-3 h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100">
-          <Text className="text-2xl">{icon}</Text>
+          <AppIcon name={icon} size={28} />
         </View>
 
         <View className="flex-1">

@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
@@ -12,6 +13,7 @@ import { getProfile, uploadProfileAvatar } from "@/database/user";
 import { logout } from "@/database/auth";
 
 export default function PerfilScreen() {
+  const insets = useSafeAreaInsets();
   const { data: perfilResp, isLoading, mutate } = useSWR("perfil", () => getProfile());
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   // A API pode devolver o objeto direto ou embrulhado em { data: {...} }
@@ -73,7 +75,7 @@ export default function PerfilScreen() {
     return (
       <View className="flex-1 bg-slate-50">
         {/* Skeleton do cabeçalho */}
-        <View className="items-center gap-3 rounded-b-3xl bg-emerald-900 px-6 pb-8 pt-16">
+        <View className="items-center gap-3 rounded-b-3xl bg-emerald-900 px-6 pb-8" style={{ paddingTop: insets.top + 16 }}>
           <Skeleton width={80} height={80} radius={40} />
           <Skeleton width={160} height={20} />
           <Skeleton width={200} height={14} />
@@ -116,20 +118,20 @@ export default function PerfilScreen() {
         <View className="px-5 pt-5">
           <ProfileSection title="Perfil">
             <ProfileRow
-              icon="👤"
+              icon="user"
               iconBg="bg-violet-100"
               label="Nome completo"
               value={perfil?.name}
               onPress={() => router.push("/editar-perfil/nome" as any)}
             />
             <ProfileRow
-              icon="📧"
+              icon="envelope"
               iconBg="bg-sky-100"
               label="E-mail"
               value={perfil?.email}
             />
             <ProfileRow
-              icon="🔒"
+              icon="lock"
               iconBg="bg-emerald-100"
               label="Senha"
               value="••••••••"
@@ -140,32 +142,32 @@ export default function PerfilScreen() {
 
           <ProfileSection title="Vínculos acadêmicos">
             <ProfileRow
-              icon="🏛️"
+              icon="buildings"
               iconBg="bg-amber-100"
               label="Instituição"
               value={perfil?.institution?.name ?? "Sem instituição vinculada"}
               onPress={() => router.push("/editar-perfil/instituicao" as any)}
             />
             <ProfileRow
-              icon="📅"
+              icon="calendar"
               iconBg="bg-orange-100"
               label="Período letivo"
               value={perfil?.academic_period?.name ?? "Sem período vinculado"}
-              onPress={() => router.push("/editar-perfil/turma" as any)}
+              onPress={() => router.push("/turmas" as any)}
             />
             <ProfileRow
-              icon="👥"
+              icon="users"
               iconBg="bg-violet-100"
-              label="Turma"
-              value={perfil?.turma?.name ?? "Sem turma vinculada"}
-              onPress={() => router.push("/editar-perfil/turma" as any)}
+              label="Minhas turmas"
+              value={perfil?.turma?.name ?? "Entre com o código da professora"}
+              onPress={() => router.push("/turmas" as any)}
               isLast
             />
           </ProfileSection>
 
           <ProfileSection title="Aplicativo">
             <ProfileRow
-              icon="ℹ️"
+              icon="info"
               iconBg="bg-sky-100"
               label="Sobre"
               value="Informações e versão do app"

@@ -1,20 +1,46 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Animated, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
+import { getRefreshToken, getUserId, logout } from '@/database/auth';
+import { getProfile } from '@/database/user';
 
 const { width } = Dimensions.get('window');
 
+// Só abre direto no app se existir uma sessão salva E o servidor ainda a
+// reconhecer; sem isso (primeiro acesso, conta apagada, sessão expirada ou
+// revogada) vai para o login, limpando o que sobrou no aparelho.
+async function decidirRota(): Promise<'/(tabs)' | '/login'> {
+  if (!getRefreshToken() || !getUserId()) return '/login';
+
+  try {
+    await getProfile();
+    return '/(tabs)';
+  } catch (error) {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+
+    // Sem resposta do servidor (offline): mantém a sessão e deixa as telas
+    // mostrarem o erro de conexão
+    if (status === undefined) return '/(tabs)';
+
+    await logout();
+    return '/login';
+  }
+}
+
 export default function SplashScreen() {
   const router = useRouter();
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const [progressAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
+    // A checagem roda junto com a animação, sem alongar a espera
+    const rota = decidirRota();
+
     Animated.timing(progressAnim, {
       toValue: 1,
       duration: 3000,
       useNativeDriver: false,
-    }).start(() => {
-      router.replace('/login');
+    }).start(async () => {
+      router.replace(await rota);
     });
   }, [router, progressAnim]);
 

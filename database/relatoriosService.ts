@@ -3,7 +3,8 @@ import * as FileSystem from "expo-file-system/legacy";
 import { getAccessToken } from "./auth";
 import { api } from "./index";
 
-export async function generateRelatorio(data: { list_id: string }) {
+// tipo = 'simples' já devolve o relatório com todos os formulários da lista organizados
+export async function generateRelatorio(data: { list_id: string; tipo?: 'simples' }) {
     try {
         const response = await api.post('relatorios/generate', data);
         return response.data;
@@ -128,6 +129,17 @@ export async function downloadRelatorioPDF(id: string): Promise<string> {
         return result.uri;
     } catch (error) {
         console.error('Error downloading relatorio PDF:', error);
+        throw error;
+    }
+}
+
+// Só relatório em rascunho pode ser excluído (o backend recusa os demais)
+export async function deleteRelatorio(id: string) {
+    try {
+        const response = await api.delete(`relatorios/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting relatorio:', error);
         throw error;
     }
 }

@@ -10,13 +10,15 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import "@/global.css";
 import { initDatabase } from '@/database/localDb';
 
+// Cria a tabela local de sessão uma única vez, antes de qualquer tela
+initDatabase();
+
 export const unstable_settings = {
   anchor: 'index',
 };
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  initDatabase();
 
   return (
 
@@ -41,11 +43,17 @@ export default function RootLayout() {
             <Stack.Screen name="nova-lista" options={{ headerShown: false }} />
             <Stack.Screen name="canteiros/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="relatorios/novo" options={{ headerShown: false }} />
-            <Stack.Screen name="relatorios/[id]/objetivo" options={{ headerShown: false }} />
             <Stack.Screen name="relatorios/[id]/index" options={{ headerShown: false }} />
-            <Stack.Screen name="relatorios/[id]/desenvolvimento" options={{ headerShown: false }} />
             <Stack.Screen name="registro" options={{ headerShown: false }} />
+            <Stack.Screen name="registro-salvo/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="relatorios/[id]/pdf" options={{ headerShown: false }} />
             <Stack.Screen name="editar-perfil/[campo]" options={{ headerShown: false }} />
+            <Stack.Screen name="sobre" options={{ headerShown: false }} />
+            <Stack.Screen name="turmas/index" options={{ headerShown: false }} />
+            <Stack.Screen name="turmas/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="recuperar-senha/index" options={{ headerShown: false }} />
+            <Stack.Screen name="recuperar-senha/codigo" options={{ headerShown: false }} />
+            <Stack.Screen name="recuperar-senha/nova-senha" options={{ headerShown: false }} />
           </Stack>
         </SWRConfig>
         <StatusBar style="dark" />

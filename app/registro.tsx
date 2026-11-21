@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
   Alert,
@@ -9,12 +10,14 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import {
   createFormulario,
   finalizarFormulario,
+  getFormularioById,
+  updateFormulario,
   uploadFormularioPhoto,
 } from "@/database/formularios";
 import { getListaById } from "@/database/listasFormularios";
@@ -24,14 +27,24 @@ import { SectionCard } from "@/components/registro/SectionCard";
 import { ChecklistItem } from "@/components/registro/ChecklistItem";
 import {
   MAX_REGISTRO_PHOTOS,
-  MIN_REGISTRO_PHOTOS,
   PhotoUploadBox,
 } from "@/components/registro/PhotoUploadBox";
 import type { SelectedPhoto } from "@/components/registro/PhotoUploadBox";
 import { extractApiError } from "@/lib/apiError";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 function hoje() {
   return new Date().toLocaleDateString("pt-BR");
+}
+
+function isoParaData(iso: string) {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return hoje();
+
+  const dia = String(parsed.getUTCDate()).padStart(2, "0");
+  const mes = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+  return `${dia}/${mes}/${parsed.getUTCFullYear()}`;
 }
 
 function dataParaISOString(data: string) {
@@ -51,8 +64,43 @@ function dataParaISOString(data: string) {
   return parsedDate.toISOString();
 }
 
+// Com `id` na rota a tela edita um registro existente; sem ele, cria um novo.
 export default function RegistroScreen() {
-  const { list_id } = useLocalSearchParams<{ list_id?: string }>();
+  const insets = useSafeAreaInsets();
+  const { list_id, id } = useLocalSearchParams<{ list_id?: string; id?: string }>();
+
+  const { data: formularioResp, isLoading } = useSWR(
+    id ? `formulario-${id}` : null,
+    () => getFormularioById(id as string)
+  );
+  const formulario = (formularioResp as any)?.data ?? formularioResp;
+
+  // O formulário só monta depois que o registro chegou, já com os valores iniciais
+  if (id && (isLoading || !formulario)) {
+    return (
+      <View className="flex-1 bg-slate-50 px-5" style={{ paddingTop: insets.top + 12 }}>
+        <Skeleton width="60%" height={28} radius={8} />
+        <View className="mt-6 gap-3">
+          <Skeleton width="100%" height={140} radius={16} />
+          <Skeleton width="100%" height={140} radius={16} />
+          <Skeleton width="100%" height={140} radius={16} />
+        </View>
+      </View>
+    );
+  }
+
+  return <RegistroForm list_id={list_id} editId={id} formulario={formulario} />;
+}
+
+type RegistroFormProps = {
+  list_id?: string;
+  editId?: string;
+  formulario?: any;
+};
+
+function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
+  const editing = !!editId;
+  const insets = useSafeAreaInsets();
 
   const { data: lista } = useSWR(list_id ? `lista-${list_id}` : null, () =>
     getListaById(list_id as string)
@@ -61,24 +109,28 @@ export default function RegistroScreen() {
   const listaObj = (lista as any)?.data ?? lista;
 
   // Estados Visuais do Formulário
-  const [date, setDate] = useState(hoje());
-  const [week, setWeek] = useState("");
-  const [clima, setClima] = useState<"SOL" | "NUBLADO" | "CHUVA" | "">("");
+  const [date, setDate] = useState(formulario?.date ? isoParaData(formulario.date) : hoje());
+  const [week, setWeek] = useState(formulario?.week != null ? String(formulario.week) : "");
+  const [clima, setClima] = useState<"SOL" | "NUBLADO" | "CHUVA" | "">(
+    (formulario?.weather ?? "") as "SOL" | "NUBLADO" | "CHUVA" | ""
+  );
   const [fasePlanta, setFasePlanta] = useState<
     "VEGETATIVO" | "ELONGACAO" | "FLORESCIMENTO" | ""
-  >("");
-  const [alturaEstimada, setAlturaEstimada] = useState("");
-  const [observations, setObservations] = useState("");
+  >((formulario?.phenological_stage ?? "") as "VEGETATIVO" | "ELONGACAO" | "FLORESCIMENTO" | "");
+  const [alturaEstimada, setAlturaEstimada] = useState(
+    formulario?.estimated_height_cm != null ? String(formulario.estimated_height_cm) : ""
+  );
+  const [observations, setObservations] = useState<string>(formulario?.observations ?? "");
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Checklist Fixo do MVP
   const [checklistFixo, setChecklistFixo] = useState([
-    { id: "irrigacao", label: "Irrigação realizada", checked: false },
-    { id: "limpeza", label: "Limpeza / Capina", checked: false },
-    { id: "adubacao", label: "Adubação de cobertura", checked: false },
-    { id: "plantio", label: "Plantio / Replantio", checked: false },
-    { id: "pragas", label: "Controle de pragas", checked: false },
+    { id: "irrigacao", label: "Irrigação realizada", checked: formulario?.checklist_irrigacao === true },
+    { id: "limpeza", label: "Limpeza / Capina", checked: formulario?.checklist_capina === true },
+    { id: "adubacao", label: "Adubação de cobertura", checked: formulario?.checklist_adubacao === true },
+    { id: "plantio", label: "Plantio / Replantio", checked: formulario?.checklist_plantio === true },
+    { id: "pragas", label: "Controle de pragas", checked: formulario?.checklist_pragas === true },
   ]);
 
   function toggleChecklistFixo(id: string) {
@@ -88,15 +140,25 @@ export default function RegistroScreen() {
   }
 
   async function handleSave() {
+    if (editing) {
+      await handleSaveEdicao();
+      return;
+    }
+
     if (!list_id) {
       Alert.alert("Lista não encontrada", "Abra o registro a partir de um canteiro.");
       return;
     }
 
-    if (photos.length < MIN_REGISTRO_PHOTOS || photos.length > MAX_REGISTRO_PHOTOS) {
+    if (!clima) {
+      Alert.alert("Condições do tempo", "Selecione sol, nublado ou chuva para salvar o formulário.");
+      return;
+    }
+
+    if (photos.length > MAX_REGISTRO_PHOTOS) {
       Alert.alert(
-        "Quantidade de fotos inválida",
-        `Adicione no mínimo ${MIN_REGISTRO_PHOTOS} e no máximo ${MAX_REGISTRO_PHOTOS} fotos para salvar o registro.`
+        "Muitas fotos",
+        `Um formulário aceita no máximo ${MAX_REGISTRO_PHOTOS} fotos.`
       );
       return;
     }
@@ -162,11 +224,75 @@ export default function RegistroScreen() {
     }
   }
 
+  // Edição: atualiza os campos do registro (as fotos já enviadas são mantidas)
+  async function handleSaveEdicao() {
+    if (!clima) {
+      Alert.alert("Condições do tempo", "Selecione sol, nublado ou chuva para salvar o formulário.");
+      return;
+    }
+
+    const dataISO = dataParaISOString(date);
+    if (!dataISO) {
+      Alert.alert("Data inválida", "Informe uma data válida no formato dd/mm/aaaa.");
+      return;
+    }
+
+    const semana = week.trim() ? Number(week) : undefined;
+    if (semana !== undefined && (!Number.isInteger(semana) || semana < 1)) {
+      Alert.alert("Semana inválida", "Informe um número de semana válido.");
+      return;
+    }
+
+    const altura = alturaEstimada.trim() ? Number(alturaEstimada) : undefined;
+    if (altura !== undefined && (!Number.isFinite(altura) || altura < 0)) {
+      Alert.alert("Altura inválida", "Informe uma altura válida em centímetros.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      await updateFormulario(editId as string, {
+        type: "SEMANAL",
+        date: dataISO,
+        ...(semana !== undefined ? { week: semana } : {}),
+        ...(clima ? { weather: clima } : {}),
+        ...(altura !== undefined ? { estimated_height_cm: altura } : {}),
+        ...(fasePlanta ? { phenological_stage: fasePlanta } : {}),
+        checklist_irrigacao: checklistFixo.find((i) => i.id === "irrigacao")?.checked ?? false,
+        checklist_capina: checklistFixo.find((i) => i.id === "limpeza")?.checked ?? false,
+        checklist_adubacao: checklistFixo.find((i) => i.id === "adubacao")?.checked ?? false,
+        checklist_plantio: checklistFixo.find((i) => i.id === "plantio")?.checked ?? false,
+        checklist_pragas: checklistFixo.find((i) => i.id === "pragas")?.checked ?? false,
+        observations,
+      });
+
+      // Atualiza o registro aberto e as telas que listam registros
+      await mutate(
+        (key) =>
+          typeof key === "string" &&
+          (key === `formulario-${editId}` ||
+            key === "home" ||
+            key === "user-canteiros" ||
+            key.startsWith("canteiro-forms-"))
+      );
+      router.back();
+    } catch (error: unknown) {
+      Alert.alert(
+        "Erro ao salvar",
+        extractApiError(error, "Não foi possível salvar as alterações agora. Tente novamente.")
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <View className="flex-1 bg-slate-50">
       <KeyboardAwareScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-10 pt-14"
+        contentContainerClassName="px-5"
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
         bottomOffset={40}
       >
@@ -174,24 +300,28 @@ export default function RegistroScreen() {
           <Pressable onPress={() => router.back()} className="h-11 w-11 items-center justify-center rounded-full bg-slate-100">
             <Text className="text-2xl text-slate-500">‹</Text>
           </Pressable>
-          <Text className="flex-1 px-4 text-2xl font-bold text-slate-950">Novo Registro</Text>
+          <Text className="flex-1 px-4 text-2xl font-bold text-slate-950">
+            {editing ? "Editar Registro" : "Novo Registro"}
+          </Text>
           <View className="rounded-full bg-amber-100 px-3 py-2">
-            <Text className="text-xs font-bold text-amber-600">Rascunho</Text>
+            <Text className="text-xs font-bold text-amber-600">
+              {editing ? (formulario?.synced ? "Completo" : "Incompleto") : "Rascunho"}
+            </Text>
           </View>
         </View>
 
         {/* INFORMAÇÕES GERAIS */}
-        <SectionCard title="Informações Gerais" icon="">
+        <SectionCard title="Informações Gerais">
           <View className="flex-row flex-wrap justify-between mb-4">
             <FieldBox label="Data" value={date} onChangeText={setDate} />
             <FieldBox label="Semana (opcional)" value={week} onChangeText={setWeek} />
           </View>
-          <Text className="mb-2 text-sm font-bold uppercase text-slate-600">Condições do Tempo</Text>
+          <Text className="mb-2 text-sm font-bold uppercase text-slate-600">Condições do Tempo (obrigatório)</Text>
           <View className="flex-row justify-between gap-2">
             {[
-              { label: "Sol ☀️", value: "SOL" as const },
-              { label: "Nublado ☁️", value: "NUBLADO" as const },
-              { label: "Chuva 🌧️", value: "CHUVA" as const },
+              { label: "Sol", icon: "sun" as const, value: "SOL" as const },
+              { label: "Nublado", icon: "cloud" as const, value: "NUBLADO" as const },
+              { label: "Chuva", icon: "cloudRain" as const, value: "CHUVA" as const },
             ].map((opcao) => (
               <TouchableOpacity
                 key={opcao.value}
@@ -200,14 +330,19 @@ export default function RegistroScreen() {
                   clima === opcao.value ? "bg-emerald-700 border-emerald-700" : "bg-slate-50 border-slate-300"
                 }`}
               >
-                <Text className={`text-base ${clima === opcao.value ? "text-white font-bold" : "text-slate-700 font-medium"}`}>{opcao.label}</Text>
+                <AppIcon
+                  name={opcao.icon}
+                  size={20}
+                  color={clima === opcao.value ? "#ffffff" : "#334155"}
+                />
+                <Text className={`mt-1 text-base ${clima === opcao.value ? "text-white font-bold" : "text-slate-700 font-medium"}`}>{opcao.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </SectionCard>
 
         {/* ESTADO DA PLANTA (Apenas Altura) */}
-        <SectionCard title="Estado da Planta" icon="🌱">
+        <SectionCard title="Estado da Planta" icon="plant">
           <View className="mb-4">
             <FieldBox
               label="Altura estimada (cm) (opcional)"
@@ -218,9 +353,9 @@ export default function RegistroScreen() {
           <Text className="mb-2 text-sm font-bold uppercase text-slate-600">Fase da planta (opcional)</Text>
           <View className="flex-row justify-between gap-2">
             {[
-              { id: "VEGETATIVO" as const, texto: "Vegetativo", emoji: "🌱" },
-              { id: "ELONGACAO" as const, texto: "Elongação", emoji: "🌿" },
-              { id: "FLORESCIMENTO" as const, texto: "Florescimento", emoji: "🌷" },
+              { id: "VEGETATIVO" as const, texto: "Vegetativo", icon: "plant" as const },
+              { id: "ELONGACAO" as const, texto: "Elongação", icon: "leaf" as const },
+              { id: "FLORESCIMENTO" as const, texto: "Florescimento", icon: "flower" as const },
             ].map((fase) => (
               <TouchableOpacity
                 key={fase.id}
@@ -237,21 +372,30 @@ export default function RegistroScreen() {
                 >
                   {fase.texto}
                 </Text>
-                <Text className="text-center text-base mt-1">
-                  {fase.emoji}
-                </Text>
+                <AppIcon
+                  name={fase.icon}
+                  size={20}
+                  color={fasePlanta === fase.id ? "#ffffff" : "#047857"}
+                />
               </TouchableOpacity>
             ))}
           </View>
         </SectionCard>
 
         {/* FOTOS */}
-        <SectionCard title="Registro Fotográfico" icon="📷">
-          <PhotoUploadBox photos={photos} onPhotosChange={setPhotos} />
+        <SectionCard title="Registro Fotográfico" icon="camera">
+          {editing ? (
+            <Text className="text-sm leading-5 text-slate-500">
+              {formulario?.photos?.length ?? 0} foto(s) já enviada(s). As fotos de um registro
+              salvo são mantidas e não podem ser alteradas por esta tela.
+            </Text>
+          ) : (
+            <PhotoUploadBox photos={photos} onPhotosChange={setPhotos} />
+          )}
         </SectionCard>
 
         {/* CHECKLIST FIXO MVP */}
-        <SectionCard title="Checklist de Manejo" icon="✅">
+        <SectionCard title="Checklist de Manejo" icon="check">
           {checklistFixo.map((item) => (
             <ChecklistItem
               key={item.id}
@@ -263,7 +407,7 @@ export default function RegistroScreen() {
         </SectionCard>
 
         {/* OBSERVAÇÕES */}
-        <SectionCard title="Observações Gerais" icon="📝">
+        <SectionCard title="Observações Gerais" icon="note">
           <TextInput
             value={observations}
             onChangeText={setObservations}
@@ -281,7 +425,9 @@ export default function RegistroScreen() {
           disabled={saving}
           className="mt-2 mb-8 h-14 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
         >
-          {saving ? <ActivityIndicator color="#ffffff" /> : <Text className="text-base font-bold text-white">Salvar registro</Text>}
+          {saving ? <ActivityIndicator color="#ffffff" /> : <Text className="text-base font-bold text-white">
+              {editing ? "Salvar alterações" : "Salvar registro"}
+            </Text>}
         </Pressable>
       </KeyboardAwareScrollView>
     </View>

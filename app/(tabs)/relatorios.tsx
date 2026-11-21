@@ -1,9 +1,13 @@
-import { View, Text, TouchableOpacity, FlatList, ViewStyle } from 'react-native';
+import { Alert, View, Text, TouchableOpacity, FlatList, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from 'expo-router';
 import { AntDesign } from '@expo/vector-icons';
 import { getRelatorios } from '@/database/relatorios';
+import { deleteRelatorio } from '@/database/relatoriosService';
+import { extractApiError } from '@/lib/apiError';
 import { Skeleton } from '@/components/ui/Skeleton';
-import useSWR from 'swr';
+import { AppIcon } from '@/components/ui/AppIcon';
+import useSWR, { mutate } from 'swr';
 
 const shadowStyle: ViewStyle = {
   elevation: 2,
@@ -23,12 +27,39 @@ function getStatusStyle(status: string) {
 }
 
 export default function ListaRelatoriosScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const { data, error, isLoading } = useSWR('relatorios', getRelatorios);
   const relatorios: any[] = Array.isArray(data)
     ? data
     : ((data as any)?.data ?? []);
+
+  // Segurar o card exclui só o relatório (o canteiro e os registros ficam)
+  function handleExcluir(relatorio: any, titulo: string) {
+    Alert.alert(
+      `Excluir o relatório de "${titulo}"?`,
+      "O relatório será apagado e isso não pode ser desfeito. Os registros do canteiro continuam salvos.",
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteRelatorio(String(relatorio.id));
+              await mutate('relatorios');
+            } catch (err) {
+              Alert.alert(
+                'Não foi possível excluir',
+                extractApiError(err, 'Tente novamente em instantes.')
+              );
+            }
+          },
+        },
+      ]
+    );
+  }
 
   const renderItem = ({ item }: { item: any }) => {
     const planta =
@@ -45,6 +76,8 @@ export default function ListaRelatoriosScreen() {
         className="bg-white p-5 rounded-[24px] mb-4 border border-gray-100"
         style={shadowStyle}
         onPress={() => router.push(`/relatorios/${item.id}` as any)}
+        onLongPress={() => handleExcluir(item, planta)}
+        accessibilityHint="Segure para excluir o relatório"
       >
         <View className="flex-row justify-between items-start mb-1">
           <Text className="text-lg font-bold text-[#0f172a]">{planta}</Text>
@@ -57,7 +90,7 @@ export default function ListaRelatoriosScreen() {
 
         <View className="flex-row justify-between items-center border-t border-gray-100 pt-4 mt-1">
           <View className="flex-row items-center">
-            <Text className="mr-2 text-base">📅</Text>
+            <AppIcon name="calendar" size={16} color="#94a3b8" />
             <Text className="text-gray-400 text-sm font-medium">{periodo}</Text>
           </View>
 
@@ -76,7 +109,10 @@ export default function ListaRelatoriosScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#f8fafc] px-5 pt-14 pb-[100px]">
+    <View
+      className="flex-1 bg-[#f8fafc] px-5"
+      style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 76 }}
+    >
       <View className="flex-row justify-between items-end mb-6">
         <Text className="text-2xl font-bold text-[#0f172a]">Meus Relatórios</Text>
         <Text className="text-gray-400 text-sm mb-1 font-medium">

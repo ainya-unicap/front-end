@@ -16,12 +16,11 @@ import { cadastro } from "@/database/auth";
 import { getInstitutions } from "@/database/institutions";
 import { normalizeMatricula, validateMatricula } from "@/lib/matricula";
 import { PerfilAcademico } from "@/lib/perfil";
+import { RECAPTCHA_BASE_URL, RECAPTCHA_SITE_KEY } from "@/lib/recaptcha";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 6;
 
-const RECAPTCHA_SITE_KEY = "SUA_SITE_KEY";
-const RECAPTCHA_BASE_URL = "http://localhost";
 
 type FormErrors = Partial<
   Record<

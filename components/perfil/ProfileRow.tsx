@@ -1,7 +1,8 @@
 import { Pressable, Text, View } from "react-native";
+import { AppIcon, type AppIconName } from "@/components/ui/AppIcon";
 
 type ProfileRowProps = {
-  icon: string;
+  icon: AppIconName;
   label: string;
   value?: string;
   iconBg?: string;
@@ -27,7 +28,7 @@ export function ProfileRow({
       <View
         className={`mr-3 h-10 w-10 items-center justify-center rounded-xl ${iconBg}`}
       >
-        <Text className="text-lg">{icon}</Text>
+        <AppIcon name={icon} size={20} color="#475569" />
       </View>
 
       <View className="flex-1">

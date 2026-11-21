@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router';
-import { View } from 'react-native';
-import { MaterialCommunityIcons, Ionicons, AntDesign } from '@expo/vector-icons';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={{
@@ -12,9 +13,9 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopWidth: 0,
-          height: 80,
-          paddingBottom: 20,
-          paddingTop: 10,
+          height: 62 + insets.bottom,
+          paddingBottom: Math.max(insets.bottom, 10),
+          paddingTop: 8,
           position: 'absolute', 
           elevation: 20, 
           shadowColor: '#000', 
@@ -49,40 +50,11 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="novo-btn"
-        options={{
-          title: '',
-          tabBarIcon: () => (
-            <View 
-              style={{
-                backgroundColor: '#166534',
-                width: 55,
-                height: 55,
-                borderRadius: 28,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginTop: -35, 
-                borderWidth: 5,
-                borderColor: '#ffffff',
-                elevation: 8,
-                shadowColor: '#166534',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 5,
-              }}
-            >
-              <AntDesign name="plus" size={24} color="#ffffff" />
-            </View>
-          ),
-        }}
-      />
-
-      <Tabs.Screen
         name="relatorios"
         options={{
           title: 'Relatórios',
           tabBarIcon: ({ focused }) => (
-            <Ionicons name="document-text" size={24} color={focused ? '#166534' : '#d8b4fe'} />
+            <Ionicons name="document-text" size={24} color={focused ? '#166534' : '#9ca3af'} />
           ),
         }}
       />

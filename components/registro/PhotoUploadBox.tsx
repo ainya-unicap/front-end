@@ -1,5 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
+import * as MediaLibrary from "expo-media-library/legacy";
 import { Alert, Image, Pressable, Text, View } from "react-native";
+import { AppIcon } from "@/components/ui/AppIcon";
 
 export type SelectedPhoto = {
   base64: string;
@@ -8,13 +10,35 @@ export type SelectedPhoto = {
   fileName: string;
 };
 
-export const MIN_REGISTRO_PHOTOS = 5;
-export const MAX_REGISTRO_PHOTOS = 10;
+// Mesmo limite do backend (5 fotos por formulário); não há mínimo
+export const MAX_REGISTRO_PHOTOS = 5;
 
 type PhotoUploadBoxProps = {
   photos: SelectedPhoto[];
   onPhotosChange: (photos: SelectedPhoto[]) => void;
 };
+
+// Pede permissão só para ADICIONAR fotos à galeria (não lê as do usuário).
+// Se negar, a foto continua anexada ao formulário normalmente.
+async function podeSalvarNaGaleria() {
+  try {
+    const permissao = await MediaLibrary.requestPermissionsAsync(true);
+    return permissao.granted;
+  } catch {
+    return false;
+  }
+}
+
+// Guarda uma cópia das fotos tiradas pela câmera na galeria do aparelho
+async function salvarNaGaleria(uris: string[]) {
+  for (const uri of uris) {
+    try {
+      await MediaLibrary.saveToLibraryAsync(uri);
+    } catch {
+      // Falha ao copiar para a galeria não impede o envio do formulário
+    }
+  }
+}
 
 async function pickPhoto(
   mode: "camera" | "library",
@@ -22,7 +46,7 @@ async function pickPhoto(
   onPhotosSelected: (photos: SelectedPhoto[]) => void
 ) {
   if (remainingSlots <= 0) {
-    Alert.alert("Limite de fotos", `Cada registro aceita no máximo ${MAX_REGISTRO_PHOTOS} fotos.`);
+    Alert.alert("Limite de fotos", `Cada formulário aceita no máximo ${MAX_REGISTRO_PHOTOS} fotos.`);
     return;
   }
 
@@ -40,6 +64,9 @@ async function pickPhoto(
     );
     return;
   }
+
+  // Fotos tiradas no app também ficam salvas na galeria do usuário
+  const salvarCopia = mode === "camera" ? await podeSalvarNaGaleria() : false;
 
   const result =
     mode === "camera"
@@ -95,6 +122,10 @@ async function pickPhoto(
 
   if (selectedPhotos.length > 0) {
     onPhotosSelected(selectedPhotos);
+
+    if (salvarCopia) {
+      void salvarNaGaleria(selectedPhotos.map((photo) => photo.uri));
+    }
   }
 
   const rejectedCount = unavailableCount + unsupportedCount + oversizedCount;
@@ -118,7 +149,7 @@ export function PhotoUploadBox({ photos, onPhotosChange }: PhotoUploadBoxProps) 
   return (
     <View>
       <Text className="mb-3 text-center text-sm font-medium text-slate-600">
-        {photos.length} de {MAX_REGISTRO_PHOTOS} fotos · mínimo de {MIN_REGISTRO_PHOTOS}
+        {photos.length} de {MAX_REGISTRO_PHOTOS} fotos
       </Text>
 
       {photos.length > 0 ? (
@@ -143,7 +174,7 @@ export function PhotoUploadBox({ photos, onPhotosChange }: PhotoUploadBoxProps) 
       ) : null}
 
       <Text className="mb-3 text-center text-sm text-slate-400">
-        Escolha de {MIN_REGISTRO_PHOTOS} a {MAX_REGISTRO_PHOTOS} fotos. A data e hora são adicionadas automaticamente.
+        Adicione até {MAX_REGISTRO_PHOTOS} fotos (a quantidade é livre). A data e hora são adicionadas automaticamente.
       </Text>
 
       {isAtLimit ? (
@@ -158,7 +189,10 @@ export function PhotoUploadBox({ photos, onPhotosChange }: PhotoUploadBoxProps) 
           disabled={isAtLimit}
           className="h-14 flex-1 items-center justify-center rounded-lg bg-emerald-100 active:opacity-80 disabled:opacity-50"
         >
-          <Text className="text-sm font-bold text-emerald-900">📷 Tirar foto</Text>
+          <View className="flex-row items-center gap-2">
+            <AppIcon name="camera" size={18} />
+            <Text className="text-sm font-bold text-emerald-900">Tirar foto</Text>
+          </View>
         </Pressable>
 
         <Pressable
@@ -166,7 +200,10 @@ export function PhotoUploadBox({ photos, onPhotosChange }: PhotoUploadBoxProps) 
           disabled={isAtLimit}
           className="h-14 flex-1 items-center justify-center rounded-lg bg-emerald-100 active:opacity-80 disabled:opacity-50"
         >
-          <Text className="text-sm font-bold text-emerald-900">🖼️ Enviar da galeria</Text>
+          <View className="flex-row items-center gap-2">
+            <AppIcon name="image" size={18} />
+            <Text className="text-sm font-bold text-emerald-900">Enviar da galeria</Text>
+          </View>
         </Pressable>
       </View>
     </View>

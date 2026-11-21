@@ -1,16 +1,23 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import useSWR from "swr";
-import { getCanteirosByUser } from "@/database/canteiros";
+import useSWR, { mutate } from "swr";
+import { deleteCanteiro, getCanteirosByUser } from "@/database/canteiros";
+import { extractApiError } from "@/lib/apiError";
 import { getProfile } from "@/database/user";
 import { CanteiroCard } from "@/components/canteiros/CanteiroCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import {
+  getPlantCategoryIcon,
+  type AppIconName,
+} from "@/components/ui/AppIcon";
 
 type CanteiroItem = {
   id: string;
-  icon: string;
+  icon: AppIconName;
   name: string;
   description: string;
+  plantId: string;
   totalRegistros: number;
   lastRecord: string;
   status: "ATIVO" | "PAUSADO";
@@ -19,20 +26,6 @@ type CanteiroItem = {
 
 const SEMANAS_ACOMPANHAMENTO = 12;
 const DIAS_PARA_PAUSAR = 14;
-
-const getCategoryIcon = (category: string): string => {
-  const iconMap: Record<string, string> = {
-    'CACTACEA': '🌵',
-    'CULTURA_ANUAL': '🌾',
-    'GRAMINEA_PORTE_ALTO': '🌱',
-    'GRAMINEA_PORTE_BAIXO': '🍀',
-    'GRAMINEA_PORTE_MEDIO': '🌿',
-    'LEGUMINOSA_ARBUSTIVA': '🌳',
-    'LEGUMINOSA_HERBACEA': '🍃',
-    'OLEAGINOSA_FORRAGEIRA': '🌻',
-  };
-  return iconMap[category] || '🌱';
-};
 
 const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
   const listas: any[] = canteiro.listaDeFormularios ?? [];
@@ -70,9 +63,10 @@ const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
 
   return {
     id: canteiro.id,
-    icon: getCategoryIcon(canteiro.plant?.category),
+    icon: getPlantCategoryIcon(canteiro.plant?.category),
     name: canteiro.name || canteiro.plant?.name || 'Canteiro',
     description: canteiro.plant?.name || 'Planta',
+    plantId: String(canteiro.plant?.id ?? canteiro.plant_id ?? ''),
     totalRegistros,
     lastRecord,
     status,
@@ -81,6 +75,7 @@ const mapCanteiroToCanteiro = (canteiro: any): CanteiroItem => {
 };
 
 export default function CanteirosScreen() {
+  const insets = useSafeAreaInsets();
   const { data: canteiros, error, isLoading } = useSWR('user-canteiros', getCanteirosByUser);
   // Período letivo do cabeçalho vem do perfil do aluno
   const { data: perfilResp } = useSWR('perfil', () => getProfile());
@@ -89,11 +84,69 @@ export default function CanteirosScreen() {
   const lista = Array.isArray(canteiros) ? canteiros : (canteiros?.data ?? []);
   const mappedCanteiros: CanteiroItem[] = lista.map(mapCanteiroToCanteiro);
 
+  // Segurar o card abre as ações do canteiro
+  function handleAcoes(canteiro: CanteiroItem) {
+    Alert.alert(canteiro.name, "O que você quer fazer com este canteiro?", [
+      {
+        text: "Editar",
+        onPress: () =>
+          router.push({
+            pathname: "/nova-lista",
+            params: {
+              id: canteiro.id,
+              name: canteiro.name,
+              plant_id: canteiro.plantId,
+              // A planta só pode ser trocada enquanto não houver formulários
+              tem_formularios: canteiro.totalRegistros > 0 ? "1" : "0",
+            },
+          }),
+      },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: () => handleExcluir(canteiro),
+      },
+      { text: "Cancelar", style: "cancel" },
+    ]);
+  }
+
+  // Pede confirmação e exclui o canteiro
+  function handleExcluir(canteiro: CanteiroItem) {
+    Alert.alert(
+      `Excluir "${canteiro.name}"?`,
+      "Os registros e as fotos deste canteiro serão apagados e isso não pode ser desfeito. Se outros alunos também usam o canteiro, ele só sai da sua lista.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteCanteiro(canteiro.id);
+              // Atualiza canteiros, home e a lista de relatórios
+              await Promise.all([
+                mutate("user-canteiros"),
+                mutate("home"),
+                mutate("relatorios"),
+              ]);
+            } catch (err) {
+              Alert.alert(
+                "Não foi possível excluir",
+                extractApiError(err, "Tente novamente em instantes.")
+              );
+            }
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <View className="flex-1 bg-slate-50">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-32 pt-14"
+        contentContainerClassName="px-5 pb-32"
+        contentContainerStyle={{ paddingTop: insets.top + 12 }}
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-6 flex-row items-end justify-between">
@@ -130,6 +183,7 @@ export default function CanteirosScreen() {
               lastRecord={canteiro.lastRecord}
               status={canteiro.status}
               progress={canteiro.progress}
+              onLongPress={() => handleAcoes(canteiro)}
               onPress={() =>
                 router.push({
                   pathname: "/canteiros/[id]",

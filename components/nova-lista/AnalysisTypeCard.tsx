@@ -1,9 +1,10 @@
 import { Pressable, Text } from "react-native";
+import { AppIcon, type AppIconName } from "@/components/ui/AppIcon";
 
 type AnalysisTypeCardProps = {
   title: string;
-  subtitle: string;
-  icon: string;
+  subtitle?: string;
+  icon: AppIconName;
   selected?: boolean;
   disabled?: boolean;
   onPress?: () => void;
@@ -29,7 +30,11 @@ export function AnalysisTypeCard({
           : "border-slate-200 bg-white"
       }`}
     >
-      <Text className="mb-2 text-2xl">{icon}</Text>
+      <AppIcon
+        name={icon}
+        size={28}
+        color={selected ? "#047857" : "#64748b"}
+      />
 
       <Text
         className={`text-base font-bold ${
@@ -39,13 +44,15 @@ export function AnalysisTypeCard({
         {title}
       </Text>
 
-      <Text
-        className={`mt-1 text-xs ${
-          selected ? "text-emerald-700" : "text-slate-400"
-        }`}
-      >
-        {subtitle}
-      </Text>
+      {subtitle ? (
+        <Text
+          className={`mt-1 text-xs ${
+            selected ? "text-emerald-700" : "text-slate-400"
+          }`}
+        >
+          {subtitle}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
