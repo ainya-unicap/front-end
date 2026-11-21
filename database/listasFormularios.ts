@@ -1,4 +1,5 @@
 import { api } from "./index";
+import { cachedGet } from "./offlineCache";
 
 export async function createListaFormulario(data: { canteiro_id: string; name: string }) {
     try {
@@ -11,31 +12,22 @@ export async function createListaFormulario(data: { canteiro_id: string; name: s
 }
 
 export async function getListasByCanterio(canteiroId: string) {
-    try {
+    return cachedGet(`listas:canteiro:${canteiroId}`, async () => {
         const response = await api.get(`listas-formularios/canteiro/${canteiroId}`);
         return response.data;
-    } catch (error) {
-        console.error('Error fetching listas by canteiro:', error);
-        throw error;
-    }
+    });
 }
 
 export async function getListaById(listaId: string) {
-    try {
+    return cachedGet(`lista:${listaId}`, async () => {
         const response = await api.get(`listas-formularios/${listaId}`);
         return response.data;
-    } catch (error) {
-        console.error('Error fetching lista by id:', error);
-        throw error;
-    }
+    });
 }
 
 export async function getListaFormularios(listaId: string) {
-    try {
+    return cachedGet(`lista:${listaId}:formularios`, async () => {
         const response = await api.get(`listas-formularios/${listaId}/formularios`);
         return response.data;
-    } catch (error) {
-        console.error('Error fetching lista formularios:', error);
-        throw error;
-    }
+    });
 }

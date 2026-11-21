@@ -2,7 +2,7 @@
   "expo": {
     "name": "Forrageia",
     "slug": "front-end",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "owner": "prantas",
     "icon": "./assets/images/icon.png",

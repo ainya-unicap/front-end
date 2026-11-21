@@ -9,6 +9,7 @@ type FormularioCardProps = {
   complete: boolean;
   dateLabel: string;
   photos: number;
+  offline?: boolean;
   onPress?: () => void;
 };
 
@@ -17,6 +18,7 @@ export function FormularioCard({
   complete,
   dateLabel,
   photos,
+  offline,
   onPress,
 }: FormularioCardProps) {
   return (
@@ -29,8 +31,11 @@ export function FormularioCard({
           Semana {week} — Registro semanal
         </Text>
 
-        {/* Só destaca o registro que precisa de atenção */}
-        {complete ? null : <StatusBadge label="INCOMPLETO" variant="amber" />}
+        <View className="flex-row items-center gap-2">
+          {offline ? <StatusBadge label="OFFLINE" variant="amber" /> : null}
+          {/* Só destaca o registro que precisa de atenção */}
+          {!offline && !complete ? <StatusBadge label="INCOMPLETO" variant="amber" /> : null}
+        </View>
       </View>
 
       <Text className="mb-3 text-sm text-slate-400">{dateLabel}</Text>
@@ -40,6 +45,11 @@ export function FormularioCard({
         <Text className="ml-1 text-sm text-slate-500">
           {photos} {photos === 1 ? "foto" : "fotos"}
         </Text>
+        {offline ? (
+          <Text className="ml-2 text-xs font-medium text-amber-600">
+            Aguardando conexão para sincronizar
+          </Text>
+        ) : null}
       </View>
     </Pressable>
   );

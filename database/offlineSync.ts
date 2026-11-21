@@ -5,9 +5,13 @@ import { mutate } from 'swr';
 import { api } from './index';
 import { getAccessToken, getUserId } from './auth';
 import {
+  clearPendingMutations,
   clearPendingQueue,
+  getPendingMutations,
   getPendingQueue,
   removePendingItem,
+  removePendingMutation,
+  type PendingMutationItem,
   type PendingQueueItem,
 } from './offlineQueue';
 
@@ -52,6 +56,28 @@ export function getSyncSnapshot() {
   return { online, progress: { ...progress } };
 }
 
+let lastPlantasRefreshAt = 0;
+
+async function refreshReferenceCaches() {
+  const now = Date.now();
+  // Evita rajadas de atualização em sequência (listeners/probe/app active)
+  if (now - lastPlantasRefreshAt < 15000) return;
+  lastPlantasRefreshAt = now;
+  try {
+    const mod = await import('./plantasForrageiras');
+    const data = await mod.refreshPlantasCache();
+    if (data) {
+      try {
+        await mutate((key) => Array.isArray(key) && key[0] === 'plantas');
+      } catch {
+        // best-effort
+      }
+    }
+  } catch {
+    // atualização de cache é best-effort
+  }
+}
+
 function setOnline(value: boolean) {
   if (online === value) return;
   online = value;
@@ -59,6 +85,8 @@ function setOnline(value: boolean) {
   if (value) {
     // Ao recuperar conexão, tenta sincronizar (se logado e houver pendências)
     void flushPendingQueue();
+    // Atualiza caches de referência (ex.: plantas) sempre que a internet voltar
+    void refreshReferenceCaches();
   }
 }
 
@@ -68,6 +96,8 @@ export function markOffline() {
 
 export function markOnline() {
   setOnline(true);
+  // Mesmo que o estado já esteja online, garante atualização periódica em eventos positivos
+  void refreshReferenceCaches();
 }
 
 export function isLikelyOnline() {
@@ -112,7 +142,9 @@ export function initOfflineSync() {
   if (initialized) return;
   initialized = true;
 
-  void probeConnectivity();
+  void probeConnectivity().then((ok) => {
+    if (ok) void refreshReferenceCaches();
+  });
 
   void (async () => {
     try {
@@ -131,7 +163,10 @@ export function initOfflineSync() {
   appStateSubscription = AppState.addEventListener('change', (state) => {
     if (state === 'active') {
       void probeConnectivity().then((ok) => {
-        if (ok) void flushPendingQueue();
+        if (ok) {
+          void flushPendingQueue();
+          void refreshReferenceCaches();
+        }
       });
     }
   });
@@ -193,6 +228,55 @@ async function uploadItem(item: PendingQueueItem) {
   });
 }
 
+async function uploadMutation(item: PendingMutationItem) {
+  const headersJson = authHeaders({ 'Content-Type': 'application/json' });
+  const id = item.entityId ?? item.payload?.id;
+
+  switch (item.mutationType) {
+    case 'update_canteiro':
+      await axios.put(rawUrl(`canteiros/${id}`), item.payload, { headers: headersJson });
+      return;
+    case 'update_formulario':
+      await axios.put(rawUrl(`formularios/${id}`), item.payload, { headers: headersJson });
+      return;
+    case 'finalizar_formulario':
+      await axios.post(rawUrl(`formularios/${id}/finalizar`), undefined, { headers: headersJson });
+      return;
+    case 'update_relatorio':
+      await axios.put(rawUrl(`relatorios/${id}`), item.payload, { headers: headersJson });
+      return;
+    case 'update_relatorio_objective':
+      await axios.put(rawUrl(`relatorios/${id}/objective`), item.payload, { headers: headersJson });
+      return;
+    case 'update_relatorio_introduction':
+      await axios.put(rawUrl(`relatorios/${id}/introduction`), item.payload, { headers: headersJson });
+      return;
+    case 'update_relatorio_development':
+      await axios.put(rawUrl(`relatorios/${id}/development`), item.payload, { headers: headersJson });
+      return;
+    case 'update_relatorio_final_thoughts':
+      await axios.put(rawUrl(`relatorios/${id}/final-thoughts`), item.payload, { headers: headersJson });
+      return;
+    case 'update_relatorio_references':
+      await axios.put(rawUrl(`relatorios/${id}/references`), item.payload, { headers: headersJson });
+      return;
+    case 'submit_relatorio':
+      await axios.post(rawUrl(`relatorios/${id}/submit`), undefined, { headers: headersJson });
+      return;
+    case 'delete_relatorio':
+      await axios.delete(rawUrl(`relatorios/${id}`), { headers: headersJson });
+      return;
+    case 'generate_relatorio':
+      await axios.post(rawUrl('relatorios/generate'), item.payload, { headers: headersJson });
+      return;
+    case 'generate_relatorio_analise':
+      await axios.post(rawUrl(`canteiros/${item.payload?.canteiroId ?? id}/relatorio-ia`), undefined, { headers: headersJson });
+      return;
+    default:
+      throw new Error(`Mutação offline não suportada: ${String(item.mutationType)}`);
+  }
+}
+
 export async function flushPendingQueue(): Promise<void> {
   if (syncing) return;
 
@@ -201,7 +285,9 @@ export async function flushPendingQueue(): Promise<void> {
   if (!userId || !token) return;
 
   const queue = getPendingQueue();
-  if (queue.length === 0) return;
+  const mutations = getPendingMutations();
+  const total = queue.length + mutations.length;
+  if (total === 0) return;
 
   // Garante que há conexão antes de tentar
   const connected = await probeConnectivity();
@@ -213,17 +299,17 @@ export async function flushPendingQueue(): Promise<void> {
     successTimer = null;
   }
 
-  const total = queue.length;
   progress = { active: true, currentLabel: null, completed: 0, total, successMessage: null };
   emit();
 
+  let completed = 0;
   try {
     for (let i = 0; i < queue.length; i++) {
       const item = queue[i];
       progress = {
         active: true,
         currentLabel: item.displayName || (item.kind === 'canteiro' ? 'Canteiro' : 'Formulário'),
-        completed: i,
+        completed,
         total,
         successMessage: null,
       };
@@ -231,17 +317,39 @@ export async function flushPendingQueue(): Promise<void> {
 
       await uploadItem(item);
       removePendingItem(item);
+      completed += 1;
     }
 
-    // Limpa o banco local temporário após sucesso completo
+    for (let i = 0; i < mutations.length; i++) {
+      const item = mutations[i];
+      progress = {
+        active: true,
+        currentLabel: item.displayName || 'Alteração pendente',
+        completed,
+        total,
+        successMessage: null,
+      };
+      emit();
+
+      await uploadMutation(item);
+      removePendingMutation(item.localId);
+      completed += 1;
+    }
+
+    // Limpa filas locais temporárias após sucesso completo
     clearPendingQueue();
+    clearPendingMutations();
 
     // Atualiza telas que dependem dos dados enviados
     await Promise.allSettled([
       mutate('user-canteiros'),
       mutate('home'),
       mutate('relatorios'),
+      mutate('perfil'),
       mutate((key) => typeof key === 'string' && key.startsWith('canteiro-forms-')),
+      mutate((key) => typeof key === 'string' && key.startsWith('formulario-')),
+      mutate((key) => typeof key === 'string' && key.startsWith('relatorio-')),
+      mutate((key) => typeof key === 'string' && key.startsWith('lista-')),
     ]);
 
     progress = {

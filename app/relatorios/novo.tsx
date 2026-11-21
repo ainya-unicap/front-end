@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
@@ -17,6 +17,7 @@ import {
   generateRelatorio,
   generateRelatorioComAnalise,
 } from "@/database/relatoriosService";
+import { isLikelyOnline, subscribeOnlineState } from "@/database/offlineSync";
 
 import HeaderStack from "@/components/navigation/headerStack";
 import { SectionCard } from "@/components/registro/SectionCard";
@@ -61,9 +62,14 @@ type ReportType = "simples" | "analise";
 
 export default function NovoRelatorioScreen() {
   const insets = useSafeAreaInsets();
+  const [isOnline, setIsOnline] = useState(isLikelyOnline());
   const { data: canteirosData, isLoading } = useSWR("user-canteiros", () =>
     getCanteirosByUser()
   );
+
+  useEffect(() => {
+    return subscribeOnlineState((online) => setIsOnline(online));
+  }, []);
 
   const canteiros: CanteiroOption[] = useMemo(() => {
     const arr = Array.isArray(canteirosData)
@@ -98,7 +104,18 @@ export default function NovoRelatorioScreen() {
       setGenerating(true);
 
       if (reportType === "analise") {
-        const response = await generateRelatorioComAnalise(canteiro.id);
+        const response: any = await generateRelatorioComAnalise(canteiro.id);
+
+        if (response?.queuedOffline) {
+          await mutate("relatorios");
+          Alert.alert(
+            "Salvo offline",
+            "O relatório com IA será gerado quando a conexão com a internet for restabelecida."
+          );
+          router.replace("/relatorios");
+          return;
+        }
+
         if (response.status !== 201) {
           const responseData = response.data;
           const errorMessage =
@@ -132,10 +149,21 @@ export default function NovoRelatorioScreen() {
         return;
       }
 
-      const relatorio = await generateRelatorio({
+      const relatorio: any = await generateRelatorio({
         list_id: canteiro.listId,
         tipo: "simples",
       });
+
+      if (relatorio?.queuedOffline) {
+        await mutate("relatorios");
+        Alert.alert(
+          "Salvo offline",
+          "O relatório será gerado quando a conexão com a internet for restabelecida."
+        );
+        router.replace("/relatorios");
+        return;
+      }
+
       await mutate("relatorios");
       const relatorioId =
         relatorio?.id ?? relatorio?.data?.id ?? relatorio?.relatorio?.id;
@@ -258,9 +286,19 @@ export default function NovoRelatorioScreen() {
         className="absolute bottom-0 left-0 right-0 border-t border-slate-100 bg-slate-50 px-5 pt-3"
         style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
       >
+        {!isOnline ? (
+          <View className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <Text className="text-sm font-semibold text-amber-800">
+              Sem conexão com a internet
+            </Text>
+            <Text className="mt-1 text-xs leading-5 text-amber-700">
+              As funcionalidades de gerar relatórios só estarão disponíveis quando o dispositivo estiver conectado.
+            </Text>
+          </View>
+        ) : null}
         <Pressable
           onPress={handleGerar}
-          disabled={generating}
+          disabled={generating || !isOnline}
           className="h-14 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
         >
           {generating ? (

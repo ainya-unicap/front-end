@@ -100,7 +100,7 @@ function getQueuedCanteiros(): PendingCanteiroItem[] {
   }));
 }
 
-function getQueuedFormularios(): PendingFormularioItem[] {
+export function getQueuedFormularios(): PendingFormularioItem[] {
   const rows = db.getAllSync<any>(`SELECT id, list_id, payload_json, title, created_at FROM offline_formularios ORDER BY id ASC`);
   return (rows ?? []).map((row) => {
     const localId = Number(row.id);
@@ -188,4 +188,126 @@ export function clearProfileCache() {
   const userId = getUserId();
   if (!userId) return;
   db.runSync(`DELETE FROM profile_cache WHERE user_id = ?`, [String(userId)]);
+}
+
+// Cache de plantas forrageiras (lista usada no formulário/cadastro de canteiro)
+function normalizePlantasArray(input: unknown): any[] {
+  if (Array.isArray(input)) return input;
+  if (input && typeof input === 'object' && Array.isArray((input as any).data)) {
+    return (input as any).data;
+  }
+  return [];
+}
+
+export function savePlantasCache(plantasInput: unknown) {
+  const plantas = normalizePlantasArray(plantasInput);
+  if (plantas.length === 0) return;
+  const updatedAt = nowIso();
+  plantas.forEach((planta) => {
+    const id = planta?.id ?? planta?._id;
+    if (id == null) return;
+    db.runSync(
+      `INSERT INTO plantas_cache (id, data_json, updated_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET data_json = excluded.data_json, updated_at = excluded.updated_at`,
+      [String(id), JSON.stringify(planta), updatedAt]
+    );
+  });
+}
+
+export function getPlantasCache(): any[] {
+  const rows = db.getAllSync<any>(`SELECT data_json FROM plantas_cache ORDER BY id ASC`);
+  return (rows ?? [])
+    .map((row) => {
+      try {
+        return JSON.parse(String(row.data_json));
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+export type OfflineMutationKind =
+  | 'update_canteiro'
+  | 'update_formulario'
+  | 'finalizar_formulario'
+  | 'update_relatorio'
+  | 'update_relatorio_objective'
+  | 'update_relatorio_introduction'
+  | 'update_relatorio_development'
+  | 'update_relatorio_final_thoughts'
+  | 'update_relatorio_references'
+  | 'submit_relatorio'
+  | 'delete_relatorio'
+  | 'generate_relatorio'
+  | 'generate_relatorio_analise';
+
+export type PendingMutationItem = {
+  kind: 'mutation';
+  localId: number;
+  mutationType: OfflineMutationKind;
+  entityType?: string | null;
+  entityId?: string | null;
+  displayName: string;
+  createdAt: string;
+  payload: any;
+};
+
+function parseJsonSafe<T = any>(value: unknown): T | null {
+  try {
+    if (typeof value === 'string') return JSON.parse(value) as T;
+    return (value ?? null) as T;
+  } catch {
+    return null;
+  }
+}
+
+export function enqueueMutation(
+  mutationType: OfflineMutationKind,
+  payload: any,
+  options?: { entityType?: string; entityId?: string; displayName?: string }
+): number {
+  const result: any = db.runSync(
+    `INSERT INTO offline_mutations (kind, entity_type, entity_id, payload_json, display_name, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      String(mutationType),
+      options?.entityType ?? null,
+      options?.entityId ?? null,
+      JSON.stringify(payload ?? {}),
+      options?.displayName ?? 'Alteração pendente',
+      nowIso(),
+    ]
+  );
+  return Number(result?.lastInsertRowId ?? 0);
+}
+
+export function getPendingMutations(): PendingMutationItem[] {
+  const rows = db.getAllSync<any>(`SELECT * FROM offline_mutations ORDER BY id ASC`);
+  return (rows ?? []).map((row) => ({
+    kind: 'mutation' as const,
+    localId: Number(row.id),
+    mutationType: String(row.kind) as OfflineMutationKind,
+    entityType: row.entity_type ?? null,
+    entityId: row.entity_id != null ? String(row.entity_id) : null,
+    displayName: row.display_name ? String(row.display_name) : 'Alteração pendente',
+    createdAt: String(row.created_at ?? ''),
+    payload: parseJsonSafe(row.payload_json) ?? {},
+  }));
+}
+
+export function removePendingMutation(localId: number) {
+  db.runSync(`DELETE FROM offline_mutations WHERE id = ?`, [Number(localId)]);
+}
+
+export function clearPendingMutations() {
+  db.runSync(`DELETE FROM offline_mutations`);
+}
+
+export function hasPendingSyncWork() {
+  const createQueue = getPendingQueue();
+  if (createQueue.length > 0) return true;
+  const muts = getPendingMutations();
+  return muts.length > 0;
 }

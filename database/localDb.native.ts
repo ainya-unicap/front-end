@@ -39,6 +39,28 @@ export function initDatabase() {
             data_json TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS plantas_cache (
+            id TEXT PRIMARY KEY,
+            data_json TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS api_cache (
+            cache_key TEXT PRIMARY KEY,
+            data_json TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS offline_mutations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind TEXT NOT NULL,
+            entity_type TEXT,
+            entity_id TEXT,
+            payload_json TEXT NOT NULL,
+            display_name TEXT,
+            created_at TEXT NOT NULL
+        );
     `);
 }
 

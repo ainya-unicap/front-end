@@ -1,10 +1,11 @@
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { AntDesign } from "@expo/vector-icons";
 import useSWR from "swr";
 
 import { getCanteiroFormularios } from "@/database/canteiros";
+import { getQueuedFormularios } from "@/database/offlineQueue";
 
 import { StatusBadge } from "@/components/canteiros/StatusBadge";
 import { FormularioCard } from "@/components/canteiros/FormularioCard";
@@ -15,6 +16,7 @@ type FormularioItem = {
   complete: boolean;
   dateLabel: string;
   photos: number;
+  offline?: boolean;
 };
 
 function formatDateLabel(formulario: any): string {
@@ -46,12 +48,35 @@ async function fetchFormularios(canteiroId: string) {
   const resp = await getCanteiroFormularios(canteiroId);
   const listas: any[] = Array.isArray(resp) ? resp : (resp?.data ?? []);
 
+  const listIds = listas.map((l) => String(l?.id)).filter(Boolean);
+
   return {
     listId: listas[0]?.id ? String(listas[0].id) : null,
+    listIds,
     items: listas
       .flatMap((lista) => lista.formularios ?? [])
       .map(mapFormulario),
   };
+}
+
+function getOfflineFormulariosForLists(listIds: string[]): FormularioItem[] {
+  try {
+    if (!listIds || listIds.length === 0) return [];
+    const set = new Set(listIds.map(String));
+    return getQueuedFormularios()
+      .filter((item) => set.has(String(item.listId)))
+      .map((item) => ({
+        id: `offline-form-${item.localId}`,
+        week: item.payload?.week ?? 0,
+        complete: false,
+        dateLabel: formatDateLabel(item.payload),
+        photos: item.photos?.length ?? 0,
+        offline: true,
+      }))
+      .sort((a, b) => (b.week ?? 0) - (a.week ?? 0));
+  } catch {
+    return [];
+  }
 }
 
 export default function ListaFormulariosScreen() {
@@ -63,8 +88,11 @@ export default function ListaFormulariosScreen() {
     fetchFormularios(id)
   );
 
-  const formularios: FormularioItem[] = data?.items ?? [];
+  const onlineFormularios: FormularioItem[] = data?.items ?? [];
   const listId: string | null = data?.listId ?? null;
+  const listIds: string[] = data?.listIds ?? (listId ? [listId] : []);
+  const offlineFormularios = getOfflineFormulariosForLists(listIds);
+  const formularios = [...offlineFormularios, ...onlineFormularios];
 
   function handleNovoRegistro() {
     // Abre a tela de criação de registro já com o list_id da lista do canteiro.
@@ -116,7 +144,17 @@ export default function ListaFormulariosScreen() {
               complete={item.complete}
               dateLabel={item.dateLabel}
               photos={item.photos}
-              onPress={() => router.push(`/registro-salvo/${item.id}`)}
+              offline={item.offline}
+              onPress={() => {
+                if (item.offline) {
+                  Alert.alert(
+                    "Registro offline",
+                    "Este registro foi salvo localmente e será enviado quando a conexão com a internet for restabelecida."
+                  );
+                  return;
+                }
+                router.push(`/registro-salvo/${item.id}`);
+              }}
             />
           ))
         )}

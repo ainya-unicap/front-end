@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Alert, View, Text, TouchableOpacity, FlatList, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from 'expo-router';
 import { AntDesign } from '@expo/vector-icons';
 import { getRelatorios } from '@/database/relatorios';
 import { deleteRelatorio } from '@/database/relatoriosService';
+import { isLikelyOnline, subscribeOnlineState } from '@/database/offlineSync';
 import { extractApiError } from '@/lib/apiError';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { AppIcon } from '@/components/ui/AppIcon';
@@ -29,6 +31,11 @@ function getStatusStyle(status: string) {
 export default function ListaRelatoriosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [isOnline, setIsOnline] = useState(isLikelyOnline());
+
+  useEffect(() => {
+    return subscribeOnlineState((online) => setIsOnline(online));
+  }, []);
 
   const { data, error, isLoading } = useSWR('relatorios', getRelatorios);
   const relatorios: any[] = Array.isArray(data)
@@ -37,6 +44,14 @@ export default function ListaRelatoriosScreen() {
 
   // Segurar o card exclui só o relatório (o canteiro e os registros ficam)
   function handleExcluir(relatorio: any, titulo: string) {
+    if (!isOnline) {
+      Alert.alert(
+        'Sem conexão com a internet',
+        'A exclusão de relatórios só está disponível quando o dispositivo estiver conectado. No modo offline, apenas a leitura dos relatórios é permitida.'
+      );
+      return;
+    }
+
     Alert.alert(
       `Excluir o relatório de "${titulo}"?`,
       "O relatório será apagado e isso não pode ser desfeito. Os registros do canteiro continuam salvos.",
@@ -77,7 +92,7 @@ export default function ListaRelatoriosScreen() {
         style={shadowStyle}
         onPress={() => router.push(`/relatorios/${item.id}` as any)}
         onLongPress={() => handleExcluir(item, planta)}
-        accessibilityHint="Segure para excluir o relatório"
+        accessibilityHint={isOnline ? "Segure para excluir o relatório" : "Visualização disponível offline"}
       >
         <View className="flex-row justify-between items-start mb-1">
           <Text className="text-lg font-bold text-[#0f172a]">{planta}</Text>
@@ -145,13 +160,28 @@ export default function ListaRelatoriosScreen() {
         />
       )}
 
-      <TouchableOpacity
-        className="mt-2 bg-white border border-[#166534] py-[14px] rounded-full flex-row justify-center items-center shadow-sm"
-        onPress={() => router.push('/relatorios/novo')}
-      >
-        <AntDesign name="plus" size={18} color="#5b21b6" />
-        <Text className="text-[#166534] font-bold text-base ml-2">Novo relatório</Text>
-      </TouchableOpacity>
+      {!isOnline ? (
+        <View className="mt-2">
+          <View className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <Text className="text-sm font-semibold text-amber-800">Sem conexão com a internet</Text>
+            <Text className="mt-1 text-xs leading-5 text-amber-700">
+              As funcionalidades de gerar relatórios só estarão disponíveis quando o dispositivo estiver conectado.
+            </Text>
+          </View>
+          <View className="bg-slate-100 border border-slate-200 py-[14px] rounded-full flex-row justify-center items-center">
+            <AntDesign name="plus" size={18} color="#94a3b8" />
+            <Text className="text-slate-400 font-bold text-base ml-2">Novo relatório</Text>
+          </View>
+        </View>
+      ) : (
+        <TouchableOpacity
+          className="mt-2 bg-white border border-[#166534] py-[14px] rounded-full flex-row justify-center items-center shadow-sm"
+          onPress={() => router.push('/relatorios/novo')}
+        >
+          <AntDesign name="plus" size={18} color="#5b21b6" />
+          <Text className="text-[#166534] font-bold text-base ml-2">Novo relatório</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

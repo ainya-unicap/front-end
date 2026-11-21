@@ -291,14 +291,6 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
 
   // Edição: atualiza os campos do registro (as fotos já enviadas são mantidas)
   async function handleSaveEdicao() {
-    if (!isLikelyOnline()) {
-      Alert.alert(
-        "Sem conexão",
-        "A edição do formulário só pode ser feita quando a conexão com a internet for restabelecida."
-      );
-      return;
-    }
-
     if (!clima) {
       Alert.alert("Condições do tempo", "Selecione sol, nublado ou chuva para salvar o formulário.");
       return;
@@ -325,7 +317,7 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
     try {
       setSaving(true);
 
-      await updateFormulario(editId as string, {
+      const result: any = await updateFormulario(editId as string, {
         type: "SEMANAL",
         date: dataISO,
         ...(semana !== undefined ? { week: semana } : {}),
@@ -349,16 +341,15 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
             key === "user-canteiros" ||
             key.startsWith("canteiro-forms-"))
       );
+
+      if (result?.queuedOffline) {
+        Alert.alert(
+          "Salvo offline",
+          "As alterações do formulário serão enviadas quando a conexão com a internet for restabelecida."
+        );
+      }
       router.back();
     } catch (error: unknown) {
-      if (isNetworkError(error)) {
-        markOffline();
-        Alert.alert(
-          "Sem conexão",
-          "A edição do formulário só pode ser feita quando a conexão com a internet for restabelecida."
-        );
-        return;
-      }
       Alert.alert(
         "Erro ao salvar",
         extractApiError(error, "Não foi possível salvar as alterações agora. Tente novamente.")

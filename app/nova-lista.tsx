@@ -16,7 +16,6 @@ import { getPlantas, type SemesterFocus } from "@/database/plantasForrageiras";
 import { getMinhasTurmas } from "@/database/turmas";
 import { createCanteiro, updateCanteiro } from "@/database/canteiros";
 import { extractApiError } from "@/lib/apiError";
-import { isLikelyOnline, markOffline } from "@/database/offlineSync";
 
 import HeaderStack from "@/components/navigation/headerStack";
 import Warning from "@/components/forms/warning";
@@ -136,51 +135,50 @@ export default function NovaListaScreen() {
       setSaving(true);
 
       if (editing) {
-          if (!isLikelyOnline()) {
-            Alert.alert(
-              "Sem conexão",
-              "A edição do canteiro só pode ser feita quando a conexão com a internet for restabelecida."
-            );
-            return;
-          }
         // Só envia o que mudou
         const mudancas: { name?: string; plant_id?: string } = {};
         if (nomeCanteiro.trim() !== (params.name ?? "")) mudancas.name = nomeCanteiro.trim();
         if (!plantaTravada && plantId !== params.plant_id) mudancas.plant_id = plantId;
 
-          try {
-            if (Object.keys(mudancas).length > 0) {
-              await updateCanteiro(params.id as string, mudancas);
-            }
-          } catch (error) {
-            const e = error as { response?: unknown; code?: string; message?: string };
-            if (!e?.response && (e?.code === "ERR_NETWORK" || /network/i.test(e?.message ?? ""))) {
-              markOffline();
-              Alert.alert(
-                "Sem conexão",
-                "A edição do canteiro só pode ser feita quando a conexão com a internet for restabelecida."
-              );
-              return;
-            }
-            throw error;
+        let updateResult: any = null;
+        if (Object.keys(mudancas).length > 0) {
+          updateResult = await updateCanteiro(params.id as string, mudancas);
         }
-      } else {
-        // Uma chamada só: o backend cria canteiro, vínculo com o usuário do
-        // token e lista de formulários numa transação
-        const result: any = await createCanteiro({
-          plant_id: plantId,
-          name: nomeCanteiro.trim(),
-          ...(usarUniversidade && turmaId ? { turma_id: turmaId } : {}),
-        });
 
-        if (result?.queuedOffline) {
+        await Promise.all([
+          mutate("user-canteiros"),
+          mutate("home"),
+          mutate("relatorios"),
+          mutate((key) => typeof key === "string" && key.startsWith("canteiro-forms-")),
+        ]);
+
+        if (updateResult?.queuedOffline) {
           Alert.alert(
             "Salvo offline",
-            "O canteiro será enviado quando a conexão com a internet for restabelecida."
+            "As alterações do canteiro serão enviadas quando a conexão com a internet for restabelecida."
           );
-          router.back();
-          return;
+        } else {
+          Alert.alert("Pronto!", "Canteiro atualizado.");
         }
+        router.back();
+        return;
+      }
+
+      // Uma chamada só: o backend cria canteiro, vínculo com o usuário do
+      // token e lista de formulários numa transação
+      const result: any = await createCanteiro({
+        plant_id: plantId,
+        name: nomeCanteiro.trim(),
+        ...(usarUniversidade && turmaId ? { turma_id: turmaId } : {}),
+      });
+
+      if (result?.queuedOffline) {
+        Alert.alert(
+          "Salvo offline",
+          "O canteiro será enviado quando a conexão com a internet for restabelecida."
+        );
+        router.back();
+        return;
       }
 
       // Revalida canteiros, home e relatórios (que mostram nome e planta)
@@ -190,7 +188,7 @@ export default function NovaListaScreen() {
         mutate("relatorios"),
       ]);
 
-      Alert.alert("Pronto!", editing ? "Canteiro atualizado." : "Canteiro criado com sucesso.");
+      Alert.alert("Pronto!", "Canteiro criado com sucesso.");
       router.back();
     } catch (error) {
       console.error("Erro ao salvar canteiro:", error);

@@ -1,5 +1,8 @@
 import { getUserId } from "./auth";
 import { api } from "./index";
+import { cachedGet, getApiCache, isNetworkLikeError, setApiCache } from "./offlineCache";
+import { enqueueMutation } from "./offlineQueue";
+import { isLikelyOnline, markOffline } from "./offlineSync";
 
 export type FormularioType = 'SEMANAL';
 
@@ -20,15 +23,27 @@ export type FormularioPayload = {
     observations?: string;
 };
 
-export async function getFormularios() {
+function patchCachedFormulario(id: string, data: any) {
     try {
-        const userId = getUserId();
+        const key = `formulario:${id}`;
+        const cached = getApiCache<any>(key);
+        if (!cached) return;
+        const base = cached?.data ?? cached;
+        const next = { ...base, ...data };
+        // mantém envelope se existir
+        if (cached?.data) setApiCache(key, { ...cached, data: next });
+        else setApiCache(key, next);
+    } catch {
+        // best-effort
+    }
+}
+
+export async function getFormularios() {
+    const userId = getUserId();
+    return cachedGet(`formularios:list:${userId ?? 'anon'}`, async () => {
         const response = await api.get('formularios', { params: { user_id: userId } });
         return response.data;
-    } catch (error) {
-        console.error('Error fetching formularios:', error);
-        throw error;
-    }
+    });
 }
 
 export async function createFormulario(data: FormularioPayload) {
@@ -50,48 +65,56 @@ export async function createFormulario(data: FormularioPayload) {
 }
 
 export async function getFormulariosByUser() {
-    try {
-        const userId = getUserId();
+    const userId = getUserId();
+    return cachedGet(`formularios:user:${userId ?? 'anon'}`, async () => {
         const response = await api.get(`formularios/user/${userId}`);
         return response.data;
-    } catch (error) {
-        console.error('Error fetching formularios by user:', error);
-        throw error;
-    }
+    });
 }
 
 export async function getFormularioById(id: string) {
-    try {
+    return cachedGet(`formulario:${id}`, async () => {
         const response = await api.get(`formularios/${id}`);
         return response.data;
-    } catch (error) {
-        console.error('Error fetching formulario by id:', error);
-        throw error;
-    }
+    });
 }
 
 export async function updateFormulario(id: string, data: any) {
+    if (!isLikelyOnline()) {
+        enqueueMutation('update_formulario', data, {
+            entityType: 'formulario',
+            entityId: String(id),
+            displayName: data?.title || 'Formulário (alteração)',
+        });
+        patchCachedFormulario(String(id), data);
+        return { queuedOffline: true as const, id, ...data };
+    }
+
     try {
         const response = await api.put(`formularios/${id}`, data);
+        patchCachedFormulario(String(id), data);
         return response.data;
     } catch (error) {
+        if (isNetworkLikeError(error)) {
+            markOffline();
+            enqueueMutation('update_formulario', data, {
+                entityType: 'formulario',
+                entityId: String(id),
+                displayName: data?.title || 'Formulário (alteração)',
+            });
+            patchCachedFormulario(String(id), data);
+            return { queuedOffline: true as const, id, ...data };
+        }
         console.error('Error updating formulario:', error);
         throw error;
     }
 }
 
-
-
-
-
 export async function getFormularioPhotos(id: string) {
-    try {
+    return cachedGet(`formulario:${id}:photos`, async () => {
         const response = await api.get(`formularios/${id}/photos`);
         return response.data;
-    } catch (error) {
-        console.error('Error fetching formulario photos:', error);
-        throw error;
-    }
+    });
 }
 
 export async function uploadFormularioPhoto(
@@ -128,10 +151,31 @@ export async function uploadFormularioPhoto(
 }
 
 export async function finalizarFormulario(id: string) {
+    if (!isLikelyOnline()) {
+        enqueueMutation('finalizar_formulario', {}, {
+            entityType: 'formulario',
+            entityId: String(id),
+            displayName: 'Finalizar formulário',
+        });
+        patchCachedFormulario(String(id), { synced: true });
+        return { queuedOffline: true as const, id };
+    }
+
     try {
         const response = await api.post(`formularios/${id}/finalizar`);
+        patchCachedFormulario(String(id), { synced: true });
         return response.data;
     } catch (error) {
+        if (isNetworkLikeError(error)) {
+            markOffline();
+            enqueueMutation('finalizar_formulario', {}, {
+                entityType: 'formulario',
+                entityId: String(id),
+                displayName: 'Finalizar formulário',
+            });
+            patchCachedFormulario(String(id), { synced: true });
+            return { queuedOffline: true as const, id };
+        }
         console.error('Error finalizing formulario:', error);
         throw error;
     }
