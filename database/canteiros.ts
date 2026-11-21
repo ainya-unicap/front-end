@@ -1,5 +1,12 @@
 import { getUserId } from "./auth";
 import { api } from "./index";
+import { enqueueCanteiro } from "./offlineQueue";
+import { isLikelyOnline, markOffline } from "./offlineSync";
+
+function isNetworkError(error: unknown) {
+    const e = error as { response?: unknown; code?: string; message?: string };
+    return !e?.response && (e?.code === "ERR_NETWORK" || /network/i.test(e?.message ?? ""));
+}
 
 export async function getCanteiros() {
     try {
@@ -13,10 +20,20 @@ export async function getCanteiros() {
 
 // O backend cria canteiro, vínculo com o usuário do token e lista de formulários numa transação.
 export async function createCanteiro(data: { plant_id: string; name: string; list_name?: string; turma_id?: string }) {
+    if (!isLikelyOnline()) {
+        enqueueCanteiro(data);
+        return { queuedOffline: true as const, name: data.name };
+    }
+
     try {
         const response = await api.post('canteiros', data);
         return response.data;
     } catch (error) {
+        if (isNetworkError(error)) {
+            markOffline();
+            enqueueCanteiro(data);
+            return { queuedOffline: true as const, name: data.name };
+        }
         console.error('Error creating canteiro:', error);
         throw error;
     }

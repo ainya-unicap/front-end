@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { router } from 'expo-router';
-import { getAccessToken, getRefreshToken, logout, saveAccessToken, saveRefreshToken } from './auth';
+import { getAccessToken, getRefreshToken, getUserId, logout, saveAccessToken, saveRefreshToken } from './auth';
 
 export const api = axios.create({
     baseURL: 'https://back-end-ainya.vercel.app/api/',
@@ -14,6 +14,23 @@ api.interceptors.request.use((config) =>  {
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
     }
+    return config;
+});
+
+// Antes de qualquer GET (após login), envia dados pendentes do modo offline
+api.interceptors.request.use(async (config) => {
+    const method = String(config.method ?? 'get').toLowerCase();
+    const skip = (config as any)._skipOfflineSync;
+    if (method !== 'get' || skip) return config;
+    if (!getAccessToken() || !getUserId()) return config;
+
+    try {
+        const mod = await import('./offlineSync');
+        await mod.ensureSyncedBeforeGet();
+    } catch {
+        // falha de sync não deve bloquear a requisição original
+    }
+
     return config;
 });
 
@@ -40,12 +57,28 @@ async function renewSession(): Promise<string | null> {
 }
 
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        try {
+            void import('./offlineSync').then((mod) => mod.markOnline());
+        } catch {
+            // ignore
+        }
+        return response;
+    },
     async (error) => {
         const original = error.config;
         const isAuthCall = AUTH_PATHS.some((path) => String(original?.url ?? '').includes(path));
 
         if (error.response?.status !== 401 || !original || original._retry || isAuthCall) {
+            // Sinaliza perda de conexão para o gerenciador de sincronização
+            if (!error.response && !(original as any)?._skipOfflineSync) {
+                try {
+                    const mod = await import('./offlineSync');
+                    mod.markOffline();
+                } catch {
+                    // ignore
+                }
+            }
             throw error;
         }
         original._retry = true;

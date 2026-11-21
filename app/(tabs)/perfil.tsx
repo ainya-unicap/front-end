@@ -11,6 +11,7 @@ import { ProfileRow } from "@/components/perfil/ProfileRow";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getProfile, uploadProfileAvatar } from "@/database/user";
 import { logout } from "@/database/auth";
+import { getSyncSnapshot } from "@/database/offlineSync";
 
 export default function PerfilScreen() {
   const insets = useSafeAreaInsets();
@@ -26,6 +27,14 @@ export default function PerfilScreen() {
   }
 
   async function handleChangeAvatar() {
+    if (!getSyncSnapshot().online) {
+      Alert.alert(
+        "Sem conexão",
+        "A alteração da foto de perfil só pode ser feita quando a conexão com a internet for restabelecida."
+      );
+      return;
+    }
+
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert(
@@ -64,8 +73,11 @@ export default function PerfilScreen() {
       });
       await mutate(() => getProfile());
       Alert.alert("Foto atualizada", "Sua foto de perfil foi alterada.");
-    } catch {
-      Alert.alert("Não foi possível atualizar", "Tente enviar a foto novamente.");
+    } catch (error) {
+      Alert.alert(
+        "Não foi possível atualizar",
+        error instanceof Error ? error.message : "Tente enviar a foto novamente."
+      );
     } finally {
       setIsUploadingAvatar(false);
     }

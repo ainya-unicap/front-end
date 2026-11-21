@@ -9,6 +9,7 @@ import { SWRConfig } from 'swr';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import "@/global.css";
 import { initDatabase } from '@/database/localDb';
+import { SyncProgressBanner } from '@/components/sync/SyncProgressBanner';
 
 // Cria a tabela local de sessão uma única vez, antes de qualquer tela
 initDatabase();
@@ -55,6 +56,7 @@ export default function RootLayout() {
             <Stack.Screen name="recuperar-senha/codigo" options={{ headerShown: false }} />
             <Stack.Screen name="recuperar-senha/nova-senha" options={{ headerShown: false }} />
           </Stack>
+          <SyncProgressBanner />
         </SWRConfig>
         <StatusBar style="dark" />
       </ThemeProvider>

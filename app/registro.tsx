@@ -21,6 +21,8 @@ import {
   uploadFormularioPhoto,
 } from "@/database/formularios";
 import { getListaById } from "@/database/listasFormularios";
+import { enqueueFormulario } from "@/database/offlineQueue";
+import { isLikelyOnline, markOffline } from "@/database/offlineSync";
 
 import { FieldBox } from "@/components/registro/FieldBox";
 import { SectionCard } from "@/components/registro/SectionCard";
@@ -33,6 +35,11 @@ import type { SelectedPhoto } from "@/components/registro/PhotoUploadBox";
 import { extractApiError } from "@/lib/apiError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { AppIcon } from "@/components/ui/AppIcon";
+
+function isNetworkError(error: unknown) {
+  const e = error as { response?: unknown; code?: string; message?: string };
+  return !e?.response && (e?.code === "ERR_NETWORK" || /network/i.test(e?.message ?? ""));
+}
 
 function hoje() {
   return new Date().toLocaleDateString("pt-BR");
@@ -188,9 +195,9 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
         listaObj?.canteiro?.name ?? listaObj?.name ?? "Canteiro";
       const title = `${semana ? `Semana ${semana}` : "Registro semanal"} — ${nomeCanteiro}`;
 
-      const formulario = await createFormulario({
+      const payload = {
         list_id,
-        type: "SEMANAL",
+        type: "SEMANAL" as const,
         title,
         date: dataISO,
         ...(semana !== undefined ? { week: semana } : {}),
@@ -203,7 +210,25 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
         checklist_plantio: checklistFixo.find((i) => i.id === "plantio")?.checked ?? false,
         checklist_pragas: checklistFixo.find((i) => i.id === "pragas")?.checked ?? false,
         observations,
-      });
+      };
+
+      const queuePhotos = photos.map((p) => ({
+        uri: p.uri,
+        mimeType: p.mimeType,
+        fileName: p.fileName,
+      }));
+
+      if (!isLikelyOnline()) {
+        enqueueFormulario(payload, queuePhotos);
+        Alert.alert(
+          "Salvo offline",
+          "O formulário será enviado quando a conexão com a internet for restabelecida."
+        );
+        router.back();
+        return;
+      }
+
+      const formulario = await createFormulario(payload);
       const formularioId = formulario?.id ?? formulario?.data?.id;
 
       if (!formularioId) throw new Error("A API não retornou o ID do formulário criado.");
@@ -215,6 +240,46 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
       await finalizarFormulario(formularioId);
       router.replace(`/registro-salvo/${formularioId}`);
     } catch (error: unknown) {
+      // Se a conexão cair antes de criar no servidor, guarda localmente para envio posterior
+      if (!editing && isNetworkError(error) && list_id) {
+        try {
+          const dataISO = dataParaISOString(date);
+          const semana = week.trim() ? Number(week) : undefined;
+          const altura = alturaEstimada.trim() ? Number(alturaEstimada) : undefined;
+          const nomeCanteiro = listaObj?.canteiro?.name ?? listaObj?.name ?? "Canteiro";
+          const title = `${semana ? `Semana ${semana}` : "Registro semanal"} — ${nomeCanteiro}`;
+          if (dataISO && clima) {
+            enqueueFormulario(
+              {
+                list_id,
+                type: "SEMANAL",
+                title,
+                date: dataISO,
+                ...(semana !== undefined ? { week: semana } : {}),
+                weather: clima,
+                ...(altura !== undefined ? { estimated_height_cm: altura } : {}),
+                ...(fasePlanta ? { phenological_stage: fasePlanta } : {}),
+                checklist_irrigacao: checklistFixo.find((i) => i.id === "irrigacao")?.checked ?? false,
+                checklist_capina: checklistFixo.find((i) => i.id === "limpeza")?.checked ?? false,
+                checklist_adubacao: checklistFixo.find((i) => i.id === "adubacao")?.checked ?? false,
+                checklist_plantio: checklistFixo.find((i) => i.id === "plantio")?.checked ?? false,
+                checklist_pragas: checklistFixo.find((i) => i.id === "pragas")?.checked ?? false,
+                observations,
+              },
+              photos.map((p) => ({ uri: p.uri, mimeType: p.mimeType, fileName: p.fileName }))
+            );
+            markOffline();
+            Alert.alert(
+              "Salvo offline",
+              "O formulário será enviado quando a conexão com a internet for restabelecida."
+            );
+            router.back();
+            return;
+          }
+        } catch {
+          // cai no alerta genérico abaixo
+        }
+      }
       Alert.alert(
         "Erro ao salvar",
         extractApiError(error, "Não foi possível salvar o registro agora. Tente novamente.")
@@ -226,6 +291,14 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
 
   // Edição: atualiza os campos do registro (as fotos já enviadas são mantidas)
   async function handleSaveEdicao() {
+    if (!isLikelyOnline()) {
+      Alert.alert(
+        "Sem conexão",
+        "A edição do formulário só pode ser feita quando a conexão com a internet for restabelecida."
+      );
+      return;
+    }
+
     if (!clima) {
       Alert.alert("Condições do tempo", "Selecione sol, nublado ou chuva para salvar o formulário.");
       return;
@@ -278,6 +351,14 @@ function RegistroForm({ list_id, editId, formulario }: RegistroFormProps) {
       );
       router.back();
     } catch (error: unknown) {
+      if (isNetworkError(error)) {
+        markOffline();
+        Alert.alert(
+          "Sem conexão",
+          "A edição do formulário só pode ser feita quando a conexão com a internet for restabelecida."
+        );
+        return;
+      }
       Alert.alert(
         "Erro ao salvar",
         extractApiError(error, "Não foi possível salvar as alterações agora. Tente novamente.")

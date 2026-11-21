@@ -10,6 +10,7 @@ import { TextField } from "@/components/ui/TextField";
 import { getInstitutions } from "@/database/institutions";
 import { getProfile, updateProfile } from "@/database/user";
 import { extractApiError } from "@/lib/apiError";
+import { getSyncSnapshot } from "@/database/offlineSync";
 
 type Campo = "nome" | "senha" | "instituicao";
 
@@ -140,6 +141,11 @@ function EditarCampoForm({ campo, perfil }: { campo: Campo; perfil: any }) {
   }
 
   function handleSalvar() {
+    if (!getSyncSnapshot().online) {
+      setErro("A alteração dos dados de perfil só pode ser feita quando a conexão com a internet for restabelecida.");
+      return;
+    }
+
     if (campo === "nome") {
       if (nome.trim().length < 2) return setErro("O nome deve ter pelo menos 2 caracteres.");
       return salvar(() => updateProfile({ name: nome.trim() }), "Nome atualizado.");
@@ -161,6 +167,10 @@ function EditarCampoForm({ campo, perfil }: { campo: Campo; perfil: any }) {
   }
 
   function handleRemoverVinculo() {
+    if (!getSyncSnapshot().online) {
+      setErro("A alteração dos dados de perfil só pode ser feita quando a conexão com a internet for restabelecida.");
+      return;
+    }
     Alert.alert("Remover vínculo", "Deseja desvincular a instituição?", [
       { text: "Cancelar", style: "cancel" },
       {
