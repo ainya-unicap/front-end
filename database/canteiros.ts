@@ -12,7 +12,7 @@ export async function getCanteiros() {
 }
 
 // O backend cria canteiro, vínculo com o usuário do token e lista de formulários numa transação.
-export async function createCanteiro(data: { plant_id: string; name: string; list_name?: string }) {
+export async function createCanteiro(data: { plant_id: string; name: string; list_name?: string; turma_id?: string }) {
     try {
         const response = await api.post('canteiros', data);
         return response.data;

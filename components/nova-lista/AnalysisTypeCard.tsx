@@ -3,7 +3,7 @@ import { AppIcon, type AppIconName } from "@/components/ui/AppIcon";
 
 type AnalysisTypeCardProps = {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   icon: AppIconName;
   selected?: boolean;
   disabled?: boolean;
@@ -44,13 +44,15 @@ export function AnalysisTypeCard({
         {title}
       </Text>
 
-      <Text
-        className={`mt-1 text-xs ${
-          selected ? "text-emerald-700" : "text-slate-400"
-        }`}
-      >
-        {subtitle}
-      </Text>
+      {subtitle ? (
+        <Text
+          className={`mt-1 text-xs ${
+            selected ? "text-emerald-700" : "text-slate-400"
+          }`}
+        >
+          {subtitle}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }

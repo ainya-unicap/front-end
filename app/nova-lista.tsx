@@ -13,7 +13,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import useSWR, { mutate } from "swr";
 
 import { getPlantas, type SemesterFocus } from "@/database/plantasForrageiras";
-import { getProfile } from "@/database/user";
+import { getMinhasTurmas } from "@/database/turmas";
 import { createCanteiro, updateCanteiro } from "@/database/canteiros";
 import { extractApiError } from "@/lib/apiError";
 
@@ -22,6 +22,8 @@ import Warning from "@/components/forms/warning";
 import { PlantSelect } from "@/components/nova-lista/PlantSelect";
 import { AnalysisTypeCard } from "@/components/nova-lista/AnalysisTypeCard";
 import { LabeledField } from "@/components/nova-lista/LabeledField";
+import { TurmaSelect } from "@/components/nova-lista/TurmaSelect";
+import { Check } from "lucide-react-native";
 import { AppIcon, getPlantCategoryIcon, type AppIconName } from "@/components/ui/AppIcon";
 
 type PlantOption = {
@@ -41,7 +43,6 @@ function mapPlanta(planta: any): PlantOption {
 type AnalysisType = {
   id: string;
   title: string;
-  subtitle: string;
   icon: AppIconName;
   // Filtra o catálogo de plantas (plantas com foco AMBOS aparecem nos dois)
   semesterFocus: SemesterFocus;
@@ -50,15 +51,13 @@ type AnalysisType = {
 const ANALYSIS_TYPES: AnalysisType[] = [
   {
     id: "1-semestre",
-    title: "1º Semestre",
-    subtitle: "Cultivar, manejar e caracterizar",
+    title: "Cultivar, manejar e caracterizar",
     icon: "plant",
     semesterFocus: "PRIMEIRO",
   },
   {
     id: "2-semestre",
-    title: "2º Semestre",
-    subtitle: "Fatores ecológicos",
+    title: "Fatores ecológicos",
     icon: "globe",
     semesterFocus: "SEGUNDO",
   },
@@ -83,6 +82,9 @@ export default function NovaListaScreen() {
   );
   const [nomeCanteiro, setNomeCanteiro] = useState<string>(params.name ?? "");
   const [saving, setSaving] = useState(false);
+  // Vínculo com a universidade: só aparece se o aluno marcar
+  const [usarUniversidade, setUsarUniversidade] = useState(false);
+  const [turmaId, setTurmaId] = useState<string | null>(null);
 
   const semesterFocus = ANALYSIS_TYPES.find(
     (type) => type.id === analysisTypeId
@@ -101,11 +103,12 @@ export default function NovaListaScreen() {
     Array.isArray(plantasData) ? plantasData : (plantasData?.data ?? [])
   ).map(mapPlanta);
 
-  // Período letivo e turma vêm do perfil do aluno; são informativos e opcionais
-  const { data: perfilResp } = useSWR("perfil", () => getProfile());
-  const perfil = (perfilResp as any)?.data ?? perfilResp;
-  const periodoLetivo: string = perfil?.academic_period?.name ?? "";
-  const turma: string = perfil?.turma?.name ?? "";
+  // Turmas do aluno: o período letivo é o da turma escolhida
+  const { data: turmasData } = useSWR("minhas-turmas", getMinhasTurmas);
+  const turmas = turmasData ?? [];
+  const temTurma = turmas.length > 0;
+  const turmaEscolhida = turmas.find((item) => item.id === turmaId);
+  const periodoLetivo: string = turmaEscolhida?.period?.name ?? "";
 
   // Ao trocar de semestre a lista muda: se a planta escolhida saiu do
   // catálogo, vale a primeira da nova lista
@@ -120,6 +123,11 @@ export default function NovaListaScreen() {
     }
     if (!nomeCanteiro.trim()) {
       Alert.alert("Nome obrigatório", "Informe o nome do canteiro.");
+      return;
+    }
+
+    if (!editing && usarUniversidade && temTurma && !turmaId) {
+      Alert.alert("Selecione a turma", "Escolha a turma ou desmarque a opção da universidade.");
       return;
     }
 
@@ -141,6 +149,7 @@ export default function NovaListaScreen() {
         await createCanteiro({
           plant_id: plantId,
           name: nomeCanteiro.trim(),
+          ...(usarUniversidade && turmaId ? { turma_id: turmaId } : {}),
         });
       }
 
@@ -211,8 +220,7 @@ export default function NovaListaScreen() {
                 <AnalysisTypeCard
                   key={type.id}
                   title={type.title}
-                  subtitle={type.subtitle}
-                  icon={type.icon}
+                      icon={type.icon}
                   selected={type.id === analysisTypeId}
                   onPress={() => setAnalysisTypeId(type.id)}
                 />
@@ -241,31 +249,67 @@ export default function NovaListaScreen() {
               className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
             />
           </LabeledField>
-
-          {editing ? null : (
-            <>
-              <LabeledField label="Período letivo">
-                <TextInput
-                  value={periodoLetivo}
-                  editable={false}
-                  placeholder="Opcional — defina no perfil"
-                  placeholderTextColor="#94a3b8"
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
-                />
-              </LabeledField>
-
-              <LabeledField label="Turma">
-                <TextInput
-                  value={turma}
-                  editable={false}
-                  placeholder="Opcional — defina no perfil"
-                  placeholderTextColor="#94a3b8"
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-700"
-                />
-              </LabeledField>
-            </>
-          )}
         </View>
+
+        {/* Universidade (opcional, só ao criar) */}
+        {editing ? null : (
+          <View className="mb-6 rounded-2xl bg-white p-4 shadow-sm">
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: usarUniversidade }}
+              onPress={() => setUsarUniversidade((atual) => !atual)}
+              className="flex-row items-center active:opacity-80"
+            >
+              <View
+                className={`mr-3 h-6 w-6 items-center justify-center rounded-md border ${
+                  usarUniversidade
+                    ? "border-emerald-800 bg-emerald-800"
+                    : "border-slate-300 bg-white"
+                }`}
+              >
+                {usarUniversidade ? <Check size={16} color="#ffffff" /> : null}
+              </View>
+              <Text className="flex-1 text-base text-slate-700">
+                Este canteiro é de uma turma da universidade
+              </Text>
+            </Pressable>
+
+            {usarUniversidade ? (
+              <View key="universidade" className="mt-4">
+                {temTurma ? null : (
+                  <Text className="mb-3 text-sm leading-5 text-slate-400">
+                    Você ainda não está em nenhuma turma. Entre com o código da professora em
+                    Perfil › Minhas turmas.
+                  </Text>
+                )}
+
+                <LabeledField label="Turma">
+                  <TurmaSelect
+                    turmas={turmas}
+                    value={turmaId}
+                    onChange={setTurmaId}
+                    disabled={!temTurma}
+                    placeholder={temTurma ? "Selecione a turma" : "Sem turma"}
+                  />
+                </LabeledField>
+
+                <LabeledField label="Período letivo">
+                  <View
+                    className={`rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 ${
+                      temTurma ? "" : "opacity-50"
+                    }`}
+                  >
+                    <Text
+                      className={`text-base ${periodoLetivo ? "text-slate-700" : "text-slate-400"}`}
+                    >
+                      {periodoLetivo || "Definido pela turma"}
+                    </Text>
+                  </View>
+                </LabeledField>
+              </View>
+            ) : null}
+          </View>
+        )}
 
         <Warning text="Use EPIs adequados. Leve protetor solar e água." />
       </ScrollView>
