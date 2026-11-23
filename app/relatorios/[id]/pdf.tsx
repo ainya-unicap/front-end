@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { Stack, useLocalSearchParams } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
@@ -8,6 +8,7 @@ import useSWR from "swr";
 import HeaderStack from "@/components/navigation/headerStack";
 import { PdfViewer } from "@/components/relatorios/PdfViewer";
 import { downloadRelatorioPDF } from "@/database/relatoriosService";
+import { isLikelyOnline, subscribeOnlineState } from "@/database/offlineSync";
 import { extractApiError } from "@/lib/apiError";
 
 // Baixa o PDF para o cache do app e lê o conteúdo para o visualizador
@@ -22,25 +23,37 @@ async function carregarPdf(id: string) {
 
 export default function RelatorioPdfScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const [isOnline, setIsOnline] = useState(isLikelyOnline());
 
+  useEffect(() => {
+    return subscribeOnlineState((online) => setIsOnline(online));
+  }, []);
+
+  const relatorioId = id ? String(id) : null;
   const {
     data: pdf,
     error,
     isLoading,
     mutate: recarregar,
-  } = useSWR(id ? `relatorio-pdf-${id}` : null, () => carregarPdf(String(id)), {
-    // O PDF é pesado: não rebaixa ao voltar para o app nem a cada reconexão
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    shouldRetryOnError: false,
-  });
+  } = useSWR(
+    isOnline && relatorioId ? `relatorio-pdf-${relatorioId}` : null,
+    () => carregarPdf(relatorioId!),
+    {
+      // O PDF é pesado: não rebaixa ao voltar para o app nem a cada reconexão
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      shouldRetryOnError: false,
+    }
+  );
 
   const [erroVisualizador, setErroVisualizador] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
 
-  const erro = error
-    ? extractApiError(error, "Não foi possível gerar o PDF agora. Tente novamente.")
-    : erroVisualizador;
+  const erro = !isOnline
+    ? null
+    : error
+      ? extractApiError(error, "Não foi possível gerar o PDF agora. Tente novamente.")
+      : erroVisualizador;
 
   function handleTentarNovamente() {
     setErroVisualizador(null);
@@ -77,7 +90,16 @@ export default function RelatorioPdfScreen() {
         <HeaderStack title="Visualizar PDF" />
       </View>
 
-      {isLoading ? (
+      {!isOnline ? (
+        <View className="flex-1 items-center justify-center px-6">
+          <View className="w-full rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <Text className="text-base font-bold text-amber-800">Relatórios indisponíveis offline</Text>
+            <Text className="mt-2 text-sm leading-6 text-amber-700">
+              A visualização e o download de relatórios em PDF só estão disponíveis quando o dispositivo estiver conectado à internet.
+            </Text>
+          </View>
+        </View>
+      ) : isLoading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color="#14532d" />
           <Text className="mt-3 text-sm text-slate-400">Gerando PDF...</Text>

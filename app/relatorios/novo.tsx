@@ -95,6 +95,14 @@ export default function NovoRelatorioScreen() {
   );
 
   async function handleGerar() {
+    if (!isOnline) {
+      Alert.alert(
+        "Sem conexão com a internet",
+        "A geração de relatórios só está disponível quando o dispositivo estiver conectado."
+      );
+      return;
+    }
+
     if (!canteiro) {
       Alert.alert("Selecione um canteiro", "Escolha o canteiro para gerar o relatório.");
       return;
@@ -106,18 +114,8 @@ export default function NovoRelatorioScreen() {
       if (reportType === "analise") {
         const response: any = await generateRelatorioComAnalise(canteiro.id);
 
-        if (response?.queuedOffline) {
-          await mutate("relatorios");
-          Alert.alert(
-            "Salvo offline",
-            "O relatório com IA será gerado quando a conexão com a internet for restabelecida."
-          );
-          router.replace("/relatorios");
-          return;
-        }
-
-        if (response.status !== 201) {
-          const responseData = response.data;
+        if (response?.status !== 201) {
+          const responseData = response?.data;
           const errorMessage =
             responseData?.message ??
             responseData?.error ??
@@ -154,24 +152,18 @@ export default function NovoRelatorioScreen() {
         tipo: "simples",
       });
 
-      if (relatorio?.queuedOffline) {
-        await mutate("relatorios");
-        Alert.alert(
-          "Salvo offline",
-          "O relatório será gerado quando a conexão com a internet for restabelecida."
-        );
-        router.replace("/relatorios");
-        return;
-      }
-
       await mutate("relatorios");
       const relatorioId =
         relatorio?.id ?? relatorio?.data?.id ?? relatorio?.relatorio?.id;
 
-      router.push({
-        pathname: "/relatorios/[id]",
-        params: { id: String(relatorioId) },
-      });
+      if (relatorioId) {
+        router.push({
+          pathname: "/relatorios/[id]",
+          params: { id: String(relatorioId) },
+        });
+      } else {
+        router.replace("/relatorios");
+      }
     } catch (error) {
       console.error("Erro ao gerar relatório:", error);
       const responseData = isAxiosError<{
@@ -189,6 +181,26 @@ export default function NovoRelatorioScreen() {
     } finally {
       setGenerating(false);
     }
+  }
+
+  if (!isOnline) {
+    return (
+      <View className="flex-1 bg-slate-50">
+        <ScrollView
+          className="flex-1 px-5"
+          contentContainerClassName="pb-16"
+          showsVerticalScrollIndicator={false}
+        >
+          <HeaderStack title="Novo relatório" />
+          <View className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <Text className="text-base font-bold text-amber-800">Relatórios indisponíveis offline</Text>
+            <Text className="mt-2 text-sm leading-6 text-amber-700">
+              A geração e visualização de relatórios só estão disponíveis quando o dispositivo estiver conectado à internet.
+            </Text>
+          </View>
+        </ScrollView>
+      </View>
+    );
   }
 
   return (
@@ -286,19 +298,9 @@ export default function NovoRelatorioScreen() {
         className="absolute bottom-0 left-0 right-0 border-t border-slate-100 bg-slate-50 px-5 pt-3"
         style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
       >
-        {!isOnline ? (
-          <View className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <Text className="text-sm font-semibold text-amber-800">
-              Sem conexão com a internet
-            </Text>
-            <Text className="mt-1 text-xs leading-5 text-amber-700">
-              As funcionalidades de gerar relatórios só estarão disponíveis quando o dispositivo estiver conectado.
-            </Text>
-          </View>
-        ) : null}
         <Pressable
           onPress={handleGerar}
-          disabled={generating || !isOnline}
+          disabled={generating}
           className="h-14 items-center justify-center rounded-2xl bg-emerald-800 active:opacity-80 disabled:opacity-60"
         >
           {generating ? (

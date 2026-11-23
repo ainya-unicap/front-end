@@ -28,30 +28,16 @@ function getStatusStyle(status: string) {
   }
 }
 
-export default function ListaRelatoriosScreen() {
+function RelatoriosContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [isOnline, setIsOnline] = useState(isLikelyOnline());
-
-  useEffect(() => {
-    return subscribeOnlineState((online) => setIsOnline(online));
-  }, []);
 
   const { data, error, isLoading } = useSWR('relatorios', getRelatorios);
   const relatorios: any[] = Array.isArray(data)
     ? data
     : ((data as any)?.data ?? []);
 
-  // Segurar o card exclui só o relatório (o canteiro e os registros ficam)
   function handleExcluir(relatorio: any, titulo: string) {
-    if (!isOnline) {
-      Alert.alert(
-        'Sem conexão com a internet',
-        'A exclusão de relatórios só está disponível quando o dispositivo estiver conectado. No modo offline, apenas a leitura dos relatórios é permitida.'
-      );
-      return;
-    }
-
     Alert.alert(
       `Excluir o relatório de "${titulo}"?`,
       "O relatório será apagado e isso não pode ser desfeito. Os registros do canteiro continuam salvos.",
@@ -78,13 +64,12 @@ export default function ListaRelatoriosScreen() {
 
   const renderItem = ({ item }: { item: any }) => {
     const planta =
-      item.list?.plant?.name ?? item.canteiro?.name ?? 'Relatório';
-    // Data de criação do relatório (o backend não guarda período letivo nele)
-    const periodo = item.createdAt
+      item?.list?.plant?.name ?? item?.canteiro?.name ?? 'Relatório';
+    const periodo = item?.createdAt
       ? new Date(item.createdAt).toLocaleDateString('pt-BR')
       : '';
-    const status: string = item.status ?? 'RASCUNHO';
-    const registros = `${item.list?._count?.formularios ?? 0} registros`;
+    const status: string = item?.status ?? 'RASCUNHO';
+    const registros = `${item?.list?._count?.formularios ?? 0} registros`;
 
     return (
       <TouchableOpacity
@@ -92,7 +77,7 @@ export default function ListaRelatoriosScreen() {
         style={shadowStyle}
         onPress={() => router.push(`/relatorios/${item.id}` as any)}
         onLongPress={() => handleExcluir(item, planta)}
-        accessibilityHint={isOnline ? "Segure para excluir o relatório" : "Visualização disponível offline"}
+        accessibilityHint="Segure para excluir o relatório"
       >
         <View className="flex-row justify-between items-start mb-1">
           <Text className="text-lg font-bold text-[#0f172a]">{planta}</Text>
@@ -109,7 +94,7 @@ export default function ListaRelatoriosScreen() {
             <Text className="text-gray-400 text-sm font-medium">{periodo}</Text>
           </View>
 
-          {status === 'CORRIGIDO' && item.grade != null ? (
+          {status === 'CORRIGIDO' && item?.grade != null ? (
             <Text className="text-[#166534] font-bold text-xl">
               {Number(item.grade).toFixed(1)}
             </Text>
@@ -148,7 +133,7 @@ export default function ListaRelatoriosScreen() {
       ) : (
         <FlatList
           data={relatorios}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item, index) => String(item?.id ?? index)}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 20 }}
@@ -160,28 +145,46 @@ export default function ListaRelatoriosScreen() {
         />
       )}
 
-      {!isOnline ? (
-        <View className="mt-2">
-          <View className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <Text className="text-sm font-semibold text-amber-800">Sem conexão com a internet</Text>
-            <Text className="mt-1 text-xs leading-5 text-amber-700">
-              As funcionalidades de gerar relatórios só estarão disponíveis quando o dispositivo estiver conectado.
-            </Text>
-          </View>
-          <View className="bg-slate-100 border border-slate-200 py-[14px] rounded-full flex-row justify-center items-center">
-            <AntDesign name="plus" size={18} color="#94a3b8" />
-            <Text className="text-slate-400 font-bold text-base ml-2">Novo relatório</Text>
-          </View>
-        </View>
-      ) : (
-        <TouchableOpacity
-          className="mt-2 bg-white border border-[#166534] py-[14px] rounded-full flex-row justify-center items-center shadow-sm"
-          onPress={() => router.push('/relatorios/novo')}
-        >
-          <AntDesign name="plus" size={18} color="#5b21b6" />
-          <Text className="text-[#166534] font-bold text-base ml-2">Novo relatório</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        className="mt-2 bg-white border border-[#166534] py-[14px] rounded-full flex-row justify-center items-center shadow-sm"
+        onPress={() => router.push('/relatorios/novo')}
+      >
+        <AntDesign name="plus" size={18} color="#5b21b6" />
+        <Text className="text-[#166534] font-bold text-base ml-2">Novo relatório</Text>
+      </TouchableOpacity>
     </View>
   );
+}
+
+export default function ListaRelatoriosScreen() {
+  const insets = useSafeAreaInsets();
+  const [isOnline, setIsOnline] = useState(isLikelyOnline());
+
+  useEffect(() => {
+    return subscribeOnlineState((online) => setIsOnline(online));
+  }, []);
+
+  if (!isOnline) {
+    return (
+      <View
+        className="flex-1 bg-[#f8fafc] px-5"
+        style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 76 }}
+      >
+        <View className="flex-row justify-between items-end mb-6">
+          <Text className="text-2xl font-bold text-[#0f172a]">Meus Relatórios</Text>
+        </View>
+
+        <View className="flex-1 items-center justify-center px-4">
+          <View className="w-full rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <Text className="text-base font-bold text-amber-800">Relatórios indisponíveis offline</Text>
+            <Text className="mt-2 text-sm leading-6 text-amber-700">
+              A aba de relatórios só estará disponível quando o dispositivo estiver conectado à internet.
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return <RelatoriosContent />;
 }
