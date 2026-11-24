@@ -132,13 +132,18 @@ export async function logout() {
 
     // O aviso ao servidor é best-effort: o logout local acontece de qualquer jeito
     try {
-        const response = await api.post('users/logout', { refreshToken: getRefreshToken() });
+        const refreshToken = getRefreshToken();
+        const response = await api.post(
+            'users/logout',
+            refreshToken ? { refreshToken } : {},
+            { _skipOfflineSync: true } as any
+        );
         status = response.status;
         data = response.data;
     } catch (error: any) {
-        console.error('Error during logout:', error);
-        status = error.response?.status || 500;
-        data = "Ocorreu um erro ao realizar o logout.";
+        // Falha no logout remoto não deve bloquear o logout local
+        status = error?.response?.status ?? 500;
+        data = error?.response?.data ?? null;
     } finally {
         deleteAccessToken();
         deleteRefreshToken();

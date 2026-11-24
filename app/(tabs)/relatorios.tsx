@@ -1,11 +1,9 @@
-import { useEffect, useState } from 'react';
 import { Alert, View, Text, TouchableOpacity, FlatList, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from 'expo-router';
 import { AntDesign } from '@expo/vector-icons';
 import { getRelatorios } from '@/database/relatorios';
 import { deleteRelatorio } from '@/database/relatoriosService';
-import { isLikelyOnline, subscribeOnlineState } from '@/database/offlineSync';
 import { extractApiError } from '@/lib/apiError';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { AppIcon } from '@/components/ui/AppIcon';
@@ -28,7 +26,7 @@ function getStatusStyle(status: string) {
   }
 }
 
-function RelatoriosContent() {
+export default function ListaRelatoriosScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -154,37 +152,4 @@ function RelatoriosContent() {
       </TouchableOpacity>
     </View>
   );
-}
-
-export default function ListaRelatoriosScreen() {
-  const insets = useSafeAreaInsets();
-  const [isOnline, setIsOnline] = useState(isLikelyOnline());
-
-  useEffect(() => {
-    return subscribeOnlineState((online) => setIsOnline(online));
-  }, []);
-
-  if (!isOnline) {
-    return (
-      <View
-        className="flex-1 bg-[#f8fafc] px-5"
-        style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 76 }}
-      >
-        <View className="flex-row justify-between items-end mb-6">
-          <Text className="text-2xl font-bold text-[#0f172a]">Meus Relatórios</Text>
-        </View>
-
-        <View className="flex-1 items-center justify-center px-4">
-          <View className="w-full rounded-2xl border border-amber-200 bg-amber-50 p-5">
-            <Text className="text-base font-bold text-amber-800">Relatórios indisponíveis offline</Text>
-            <Text className="mt-2 text-sm leading-6 text-amber-700">
-              A aba de relatórios só estará disponível quando o dispositivo estiver conectado à internet.
-            </Text>
-          </View>
-        </View>
-      </View>
-    );
-  }
-
-  return <RelatoriosContent />;
 }

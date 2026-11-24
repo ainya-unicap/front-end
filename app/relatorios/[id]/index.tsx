@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   View,
@@ -11,7 +10,6 @@ import useSWR from "swr";
 
 import HeaderStack from "@/components/navigation/headerStack";
 import { getRelatorioById } from "@/database/relatoriosService";
-import { isLikelyOnline, subscribeOnlineState } from "@/database/offlineSync";
 import { AppIcon } from "@/components/ui/AppIcon";
 
 const SECTIONS = [
@@ -25,38 +23,12 @@ const SECTIONS = [
 export default function RelatorioIndexScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [isOnline, setIsOnline] = useState(isLikelyOnline());
-
-  useEffect(() => {
-    return subscribeOnlineState((online) => setIsOnline(online));
-  }, []);
 
   const relatorioId = id ? String(id) : null;
   const { data: relatorio, isLoading, error } = useSWR(
-    isOnline && relatorioId ? `relatorio-${relatorioId}` : null,
+    relatorioId ? `relatorio-${relatorioId}` : null,
     () => getRelatorioById(relatorioId!)
   );
-
-  if (!isOnline) {
-    return (
-      <>
-        <Stack.Screen options={{ headerShown: false }} />
-        <View className="flex-1 bg-slate-50">
-          <View className="px-5">
-            <HeaderStack title="Relatório" />
-          </View>
-          <View className="flex-1 items-center justify-center px-6">
-            <View className="w-full rounded-2xl border border-amber-200 bg-amber-50 p-5">
-              <Text className="text-base font-bold text-amber-800">Relatórios indisponíveis offline</Text>
-              <Text className="mt-2 text-sm leading-6 text-amber-700">
-                A visualização de relatórios só está disponível quando o dispositivo estiver conectado à internet.
-              </Text>
-            </View>
-          </View>
-        </View>
-      </>
-    );
-  }
 
   const rel = (relatorio as any)?.data ?? relatorio;
   const canteiroNome =

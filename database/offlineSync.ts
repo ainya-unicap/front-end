@@ -52,6 +52,10 @@ export function subscribeSyncState(listener: Listener) {
   };
 }
 
+export function subscribeOnlineState(listener: (isOnline: boolean) => void) {
+  return subscribeSyncState(({ online: isOnline }) => listener(isOnline));
+}
+
 export function getSyncSnapshot() {
   return { online, progress: { ...progress } };
 }

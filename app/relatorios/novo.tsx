@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
@@ -17,7 +17,6 @@ import {
   generateRelatorio,
   generateRelatorioComAnalise,
 } from "@/database/relatoriosService";
-import { isLikelyOnline, subscribeOnlineState } from "@/database/offlineSync";
 
 import HeaderStack from "@/components/navigation/headerStack";
 import { SectionCard } from "@/components/registro/SectionCard";
@@ -62,14 +61,9 @@ type ReportType = "simples" | "analise";
 
 export default function NovoRelatorioScreen() {
   const insets = useSafeAreaInsets();
-  const [isOnline, setIsOnline] = useState(isLikelyOnline());
   const { data: canteirosData, isLoading } = useSWR("user-canteiros", () =>
     getCanteirosByUser()
   );
-
-  useEffect(() => {
-    return subscribeOnlineState((online) => setIsOnline(online));
-  }, []);
 
   const canteiros: CanteiroOption[] = useMemo(() => {
     const arr = Array.isArray(canteirosData)
@@ -95,14 +89,6 @@ export default function NovoRelatorioScreen() {
   );
 
   async function handleGerar() {
-    if (!isOnline) {
-      Alert.alert(
-        "Sem conexão com a internet",
-        "A geração de relatórios só está disponível quando o dispositivo estiver conectado."
-      );
-      return;
-    }
-
     if (!canteiro) {
       Alert.alert("Selecione um canteiro", "Escolha o canteiro para gerar o relatório.");
       return;
@@ -181,26 +167,6 @@ export default function NovoRelatorioScreen() {
     } finally {
       setGenerating(false);
     }
-  }
-
-  if (!isOnline) {
-    return (
-      <View className="flex-1 bg-slate-50">
-        <ScrollView
-          className="flex-1 px-5"
-          contentContainerClassName="pb-16"
-          showsVerticalScrollIndicator={false}
-        >
-          <HeaderStack title="Novo relatório" />
-          <View className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-            <Text className="text-base font-bold text-amber-800">Relatórios indisponíveis offline</Text>
-            <Text className="mt-2 text-sm leading-6 text-amber-700">
-              A geração e visualização de relatórios só estão disponíveis quando o dispositivo estiver conectado à internet.
-            </Text>
-          </View>
-        </ScrollView>
-      </View>
-    );
   }
 
   return (
